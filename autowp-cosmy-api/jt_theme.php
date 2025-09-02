@@ -4,62 +4,29 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-add_filter('pre_set_site_transient_update_plugins', 'cosmy_check_for_plugin_update');
-
-function cosmy_check_for_plugin_update($transient) {
+add_filter('pre_set_site_transient_update_plugins', function($transient) {
     if (empty($transient->checked)) {
         return $transient;
     }
-    $plug_url = 'https://wp.lexx.xyz/';
-    $plug_refresh_check = $plug_url.'plugin/cosmy-plugin-update.json';
-
-    $plugin_file = plugin_basename(__FILE__);
-    $plugin_data = get_plugin_data(WP_PLUGIN_DIR . '/' . $plugin_file);
+    $plugin_file = plugin_basename(__DIR__ . '/index.php');
+    $plugin_data = get_plugin_data(__DIR__ . '/index.php');
     $current_version = $plugin_data['Version'];
-    $remote_info = wp_remote_get($plug_refresh_check);
 
-    if (is_wp_error($remote_info)) {
-        return $transient;
+    $plug_url = 'https://github.com/TheSmileGod/Cosmy_seo';
+    $plug_refresh_check = $plug_url.'/update/cosmy-plugin-update.json';
+    $remote = wp_remote_get($plug_refresh_check);
+    if (is_wp_error($remote) || 200 !== wp_remote_retrieve_response_code($remote)) return $transient;
+    $remote = json_decode(wp_remote_retrieve_body($remote));
+    $plugin = 'autowp-cosmy-api/index.php';
+
+    if ($remote && version_compare($current_version, $remote->version, '<')) {
+        $res = new stdClass();
+        $res->slug = 'autowp_cosmy_api';
+        $res->plugin = $plugin;
+        $res->new_version = $remote->version;
+        $res->package = $remote->download_url;
+        $res->url = $plug_url;
+        $transient->response[$plugin] = $res;
     }
-
-    $remote_info = json_decode(wp_remote_retrieve_body($remote_info));
-
-    if ($remote_info && version_compare($current_version, $remote_info->version, '<')) {
-        $transient->response[$plugin_file] = (object) [
-            'slug'        => 'autowp_cosmy_api',
-            'new_version' => $remote_info->version,
-            'package'     => $remote_info->download_url,
-            'url'         => $plug_url
-        ];
-    }
-
     return $transient;
-}
-
-add_filter('plugins_api', 'cosmy_plugin_info', 10, 3);
-function cosmy_plugin_info($false, $action, $args) {
-    if ($action !== 'plugin_information' || $args->slug !== 'cosmy-plugin') {
-        return $false;
-    }
-    $plug_url = 'https://wp.lexx.xyz/';
-    $plug_refresh_check = $plug_url.'plugin/cosmy-plugin-update.json';
-    
-    $remote_info = wp_remote_get($plug_refresh_check);
-    if (is_wp_error($remote_info)) {
-        return $false;
-    }
-    $remote_info = json_decode(wp_remote_retrieve_body($remote_info));
-
-    return (object) [
-        'name'          => 'COSMY SEO',
-        'slug'          => 'autowp_cosmy_api',
-        'version'       => $remote_info->version,
-        'author'        => 'CaMnO',
-        'homepage'      => $plug_url,
-        'download_link' => $remote_info->download_url,
-        'sections'      => [
-            'description' => $remote_info->description,
-            'changelog'   => $remote_info->changelog
-        ]
-    ];
-}
+});

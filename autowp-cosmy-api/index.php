@@ -5,6 +5,7 @@ Plugin Name: COSMY SEO
 Description: REST API для загрузки статей.
 Version: 1.5.0
 Author: CaMnO
+Update URI: https://github.com/TheSmileGod/Cosmy_seo
 */
 
 include_once 'jt_theme.php';
