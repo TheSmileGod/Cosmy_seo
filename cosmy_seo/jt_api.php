@@ -344,8 +344,8 @@ function cosmy_force_update_api(WP_REST_Request $request) {
     require_once(ABSPATH . 'wp-admin/includes/plugin.php');
     
     $plugin_slug = 'cosmy_seo/index.php';
-    $was_active = is_plugin_active($plugin_sl
-    
+    $was_active = is_plugin_active = is_plugin_active($plugin_slug);
+
     delete_site_transient('update_plugins');
     wp_clean_plugins_cache();
     wp_update_plugins();
