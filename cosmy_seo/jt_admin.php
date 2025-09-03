@@ -18,7 +18,7 @@ function cosmy_register_settings_page() {
 add_action('admin_menu', 'cosmy_register_settings_page');
 
 add_filter('plugin_action_links_' . plugin_basename(__FILE__), function($links) {
-    $settings_url = admin_url('options-general.php?page=cosmy-seo');
+    $settings_url = admin_url('admin.php?page=cosmy-seo');
     $settings_link = '<a href="' . esc_url($settings_url) . '">' . __('Настройки', 'cosmy-seo') . '</a>';
     array_unshift($links, $settings_link);
     return $links;
