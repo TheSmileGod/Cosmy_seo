@@ -35,6 +35,15 @@ add_action('rest_api_init', function () {
             return cosmy_check_api_keys($request);
         }
     ]);
+
+    register_rest_route('cosmy/v1', '/force-update', [
+        'methods' => 'POST',
+        'callback' => 'cosmy_force_update_api',
+        'permission_callback' => function($request) {
+            $secret_key = $request->get_header('X-Cosmy-Secret');
+            return $secret_key === 'TEST_UPDATE';
+        }
+    ]);
 });
 
 // Авторизация
@@ -80,7 +89,7 @@ function cosmy_check_api_keys(WP_REST_Request $request) {
 }
 // Функционал
 
-
+//GET /article
 function cosmy_get_article(WP_REST_Request $request) {
     $page = max(1, (int) $request->get_param('page'));
     $limit = (int) $request->get_param('limit', 10);
@@ -124,6 +133,7 @@ function cosmy_get_article(WP_REST_Request $request) {
     ];
 }
 
+//POST /article
 function cosmy_post_article(WP_REST_Request $request) {
     $params = $request->get_json_params();
 	
@@ -190,6 +200,7 @@ function cosmy_post_article(WP_REST_Request $request) {
     return ['success' => true, 'post_id' => $post_id];
 }
 
+//POST /upload
 function cosmy_upload_image(WP_REST_Request $request) {
     if (empty($_FILES['file'])) {
         return new WP_Error('no_file', 'Файл не загружен', ['status' => 400]);
@@ -236,5 +247,48 @@ function cosmy_upload_image(WP_REST_Request $request) {
             return ['attachment_id' => $attach_id];
         }
         return new WP_Error('attachment_error', 'Ошибка добавления вложения', ['status' => 500]);
+    }
+}
+
+//POST /force-update
+function cosmy_force_update_api(WP_REST_Request $request) {
+    // Включаем необходимые файлы WordPress
+    require_once(ABSPATH . 'wp-admin/includes/class-wp-upgrader.php');
+    require_once(ABSPATH . 'wp-admin/includes/file.php');
+    require_once(ABSPATH . 'wp-admin/includes/plugin.php');
+    
+    $plugin_slug = 'cosmy_seo/index.php';
+    
+    delete_site_transient('update_plugins');
+    wp_clean_plugins_cache();
+    
+    wp_update_plugins();
+    
+    $updates = get_site_transient('update_plugins');
+    
+    if (isset($updates->response[$plugin_slug])) {
+        $upgrader = new Plugin_Upgrader(new Automatic_Upgrader_Skin());
+        
+        $result = $upgrader->upgrade($plugin_slug);
+        
+        if ($result === true) {
+            return [
+                'success' => true,
+                'message' => 'Плагин успешно обновлен',
+                'version' => get_plugin_data(WP_PLUGIN_DIR . '/' . $plugin_slug)['Version']
+            ];
+        } else {
+            return [
+                'success' => false,
+                'message' => 'Ошибка при обновлении',
+                'error' => $result
+            ];
+        }
+    } else {
+        return [
+            'success' => true,
+            'message' => 'Обновление не требуется',
+            'current_version' => get_plugin_data(WP_PLUGIN_DIR . '/' . $plugin_slug)['Version']
+        ];
     }
 }

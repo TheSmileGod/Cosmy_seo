@@ -2,11 +2,11 @@
 
 /*
 Plugin Name: COSMY SEO
+Text Domain: cosmy-seo
 Description: COSMY Site — SEO module via REST API.
-Version: 1.6.4
+Version: 1.6.5
 Author: COSMY Site 
 Author URI: https://cosmy.site
-Text Domain: cosmy-seo
 Update URI: https://github.com/TheSmileGod/Cosmy_seo
 */
 
