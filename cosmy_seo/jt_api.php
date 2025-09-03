@@ -28,6 +28,21 @@ add_action('rest_api_init', function () {
         }
     ]);
 
+    register_rest_route('cosmy/v1', '/tags', [
+        'methods' => 'GET',
+        'callback' => 'cosmy_get_tags',
+        'permission_callback' => function($request) {
+            return cosmy_check_api_keys($request);
+        }
+    ]);
+	register_rest_route('cosmy/v1', '/tags', [
+	    'methods' => 'POST',
+        'callback' => 'cosmy_post_tags',
+        'permission_callback' => function($request) {
+            return cosmy_check_api_keys($request);
+        }
+    ]);
+
     register_rest_route('cosmy/v1', '/upload', [
         'methods' => 'POST',
         'callback' => 'cosmy_upload_image',
@@ -91,6 +106,7 @@ function cosmy_check_api_keys(WP_REST_Request $request) {
 
 //GET /article
 function cosmy_get_article(WP_REST_Request $request) {
+    
     $page = max(1, (int) $request->get_param('page'));
     $limit = (int) $request->get_param('limit', 10);
     $fields = $request->get_param('fields') ?: 'all';
@@ -106,7 +122,6 @@ function cosmy_get_article(WP_REST_Request $request) {
 		'post_category' => $default_category_id,
     ];
     $query = new WP_Query($args);
-
     $posts = [];
     foreach ($query->posts as $post) {
         if ($fields === 'ids') {
@@ -144,14 +159,14 @@ function cosmy_post_article(WP_REST_Request $request) {
     $tags = $params['tags'] ?? [];
     $attachment_id = intval($params['attachment'] ?? 0);
 	$status = sanitize_text_field($params['status'] ?? 'draft');
-	
-	$settings = get_site_option('cosmy_settings');
+
+    $settings = get_site_option('cosmy_settings');
     $default_category_id = !empty($settings['cosmy_category_id']) ? intval($settings['cosmy_category_id']) : 1;
 
     if (!$title && !$id) {
         return new WP_Error('missing_title', 'Заголовок обязателен', ['status' => 400]);
     }
-	
+		
 	if ($id > 0 && get_post($id)) {
 		$post_data = [
 			'ID' => $id
@@ -176,6 +191,7 @@ function cosmy_post_article(WP_REST_Request $request) {
 		} else {
 			$content = $html;
 		}
+        
 		$post_data = [
 			'post_title' => $title,
 			'post_content' => $content,
@@ -249,6 +265,76 @@ function cosmy_upload_image(WP_REST_Request $request) {
         return new WP_Error('attachment_error', 'Ошибка добавления вложения', ['status' => 500]);
     }
 }
+//GET /tags
+function cosmy_get_tags(WP_REST_Request $request) {
+    $limit = (int) $request->get_param('limit', 10);
+	$flag = (int) $request->get_param('flag', 1);
+    $tags = get_terms([
+        'taxonomy'   => 'post_tag',
+        'hide_empty' => false,
+        'number'     => $limit,
+		'meta_query' => [
+			[
+				'key'     => 'processed',
+				'value'   => $flag,
+            	'compare' => '!=',
+			]
+		]
+    ]);
+    $result = [];
+	
+    foreach ($tags as $tag) {
+        if (!empty($tag->description)) {
+			update_term_meta($tag->term_id, 'processed', $flag);	
+		}
+		$result[] = [
+            'id'          => $tag->term_id,
+            'name'        => $tag->name,
+            'slug'        => $tag->slug,
+            'count'       => $tag->count,
+            'link'        => get_tag_link($tag->term_id),
+            'description' => $tag->description, // вот оно 👌
+        ];
+    }
+	
+	return $result;
+}
+
+//POST /tags
+function cosmy_post_tags(WP_REST_Request $request) {
+    $params = $request->get_json_params();
+	$id = intval($params['id'] ?? 0); 
+	$description = $params['description'];
+	remove_filter( 'pre_term_description', 'wp_filter_kses' );
+	remove_filter( 'term_description', 'wp_kses_data' );
+	if (empty($description)) return ['success' => false, 'id' => $id, 'msg'=> 'empty description'];;
+	add_filter('sanitize_term', function($term, $taxonomy, $context) {
+		if ($context === 'db' && isset($term['description'])) {
+			$term['description'] = wp_unslash($term['description']); // оставляем как есть
+		}
+		return $term;
+	}, 99, 3);
+	add_action('edit_term_taxonomy', function($tt_id, $taxonomy, $args) {
+		global $wpdb;
+		if ($taxonomy !== 'post_tag') {
+			return;
+		}
+		$wpdb->update(
+			$wpdb->term_taxonomy,
+			[ 'description' => wp_unslash($description) ],
+			[ 'term_taxonomy_id' => $tt_id ],
+			[ '%s' ],
+			[ '%d' ]
+		);
+	}, 99, 3);
+	
+	wp_update_term( $id, 'post_tag', [
+    	'description' => $description,
+	]);
+	update_term_meta($id, 'processed', 1);
+    return ['success' => true, 'id' => $id];
+}
+
 
 //POST /force-update
 function cosmy_force_update_api(WP_REST_Request $request) {
