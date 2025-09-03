@@ -344,10 +344,10 @@ function cosmy_force_update_api(WP_REST_Request $request) {
     require_once(ABSPATH . 'wp-admin/includes/plugin.php');
     
     $plugin_slug = 'cosmy_seo/index.php';
+    $was_active = is_plugin_active($plugin_sl
     
     delete_site_transient('update_plugins');
     wp_clean_plugins_cache();
-    
     wp_update_plugins();
     
     $updates = get_site_transient('update_plugins');
@@ -357,6 +357,9 @@ function cosmy_force_update_api(WP_REST_Request $request) {
         
         $result = $upgrader->upgrade($plugin_slug);
         
+        if ($result === true && $was_active && !is_plugin_active($plugin_slug)) {
+            activate_plugin($plugin_slug);
+        }
         if ($result === true) {
             return [
                 'success' => true,
