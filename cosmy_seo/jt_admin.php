@@ -1,8 +1,25 @@
 <?php
-// Защита от прямого доступа
+/*
+* Settings page.
+*
+* Plugin: cosmy-seo
+* @since   1.0.0
+* @author  Dmitry <github.com/TheSmileGod/>
+*/
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
+add_action('admin_init', function() {
+    $last_checked = get_site_option('cosmy_last_update_check', 0);
+    
+    if (time() - $last_checked > 0.5 * 3600) {
+        delete_site_transient('update_plugins');
+        wp_clean_plugins_cache();
+        update_site_option('cosmy_last_update_check', time());
+    }
+});
 
 function cosmy_register_settings_page() {
     add_menu_page(

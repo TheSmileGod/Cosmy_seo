@@ -2,9 +2,11 @@
 
 /*
 Plugin Name: COSMY SEO
-Description: REST API для загрузки статей.
-Version: 1.6.3
-Author: CaMnO
+Description: COSMY Site — SEO module via REST API.
+Version: 1.6.4
+Author: COSMY Site 
+Author URI: https://cosmy.site
+Text Domain: cosmy-seo
 Update URI: https://github.com/TheSmileGod/Cosmy_seo
 */
 

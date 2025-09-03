@@ -1,5 +1,12 @@
 <?php
-// Защита от прямого доступа
+/*
+* REST API ENDPOINTS.
+*
+* Plugin: cosmy-seo
+* @since   1.0.0
+* @author  Dmitry <github.com/TheSmileGod/>
+*/
+
 if (!defined('ABSPATH')) {
     exit;
 }
