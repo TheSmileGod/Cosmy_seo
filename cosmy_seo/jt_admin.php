@@ -51,6 +51,7 @@ function cosmy_render_settings_page() {
         'cosmy_private_key' => '',
         'cosmy_user_id' => null,
 		'cosmy_category_id'  => null,
+        'cosmy_show_featured'=> 1,
     ]);
 
     if (isset($_POST['cosmy_save_settings'])) {
@@ -59,13 +60,16 @@ function cosmy_render_settings_page() {
         $cosmy_public_key = sanitize_text_field($_POST['cosmy_public_key']);
         $cosmy_private_key = sanitize_text_field($_POST['cosmy_private_key']);
         $cosmy_user_id = intval($_POST['cosmy_user_id']);
-		$cosmy_category_id = intval($_POST['cosmy_category_id']); // 🔹
-		
+		$cosmy_category_id = intval($_POST['cosmy_category_id']);
+        $cosmy_show_featured = isset($_POST['cosmy_show_featured']) ? 1 : 0;
+
+
         $settings = [
             'cosmy_public_key' => $cosmy_public_key,
             'cosmy_private_key' => $cosmy_private_key,
             'cosmy_user_id' => $cosmy_user_id,
 			'cosmy_category_id' => $cosmy_category_id,
+            'cosmy_show_featured'=> $cosmy_show_featured,
         ];
         update_site_option('cosmy_settings', $settings);
         
@@ -115,6 +119,15 @@ function cosmy_render_settings_page() {
 						</select>
 					</td>
 				</tr>
+                <tr>
+                    <th><label for="cosmy_show_featured">Миниатюра в статье</label></th>
+                    <td>
+                        <label>
+                            <input type="checkbox" name="cosmy_show_featured" id="cosmy_show_featured" value="1" <?php checked($settings['cosmy_show_featured'], 1); ?>>
+                            Вставлять изображение записи в начало статьи
+                        </label>
+                    </td>
+                </tr>
             </table>
             <input type="submit" name="cosmy_save_settings" value="Сохранить" class="button button-primary">
         </form>

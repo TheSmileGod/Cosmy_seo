@@ -37,3 +37,26 @@ add_filter('pre_set_site_transient_update_plugins', function($transient) {
     }
     return $transient;
 });
+
+add_filter('the_content', function($content) {
+    if (!is_singular('post') || !in_the_loop() || !is_main_query()) {
+        return $content;
+    }
+
+    if (get_option('cosmy_show_featured_in_content', '1') !== '1') {
+        return $content;
+    }
+    
+    if (strpos($content, 'wp:post-featured-image') !== false) {
+        return $content;
+    }
+    // Gutenberg-блок с параметрами
+    $block = '<!-- wp:post-featured-image {"sizeSlug":"large","aspectRatio":"16/9","scale":"cover","style":{"spacing":{"margin":{"bottom":"1.5rem"}},"border":{"radius":"20px"}}} /-->';
+
+    // Вставляем блок в начало, если его ещё нет
+    if (strpos($content, 'wp:post-featured-image') === false) {
+        $content = $block . "\n" . $content;
+    }
+
+    return $content;
+});
