@@ -43,7 +43,7 @@ add_filter('the_content', function($content) {
         return $content;
     }
 
-    if (get_option('cosmy_show_featured_in_content', '1') !== '1') {
+    if (get_option('cosmy_show_featured', '1') !== '1') {
         return $content;
     }
     
