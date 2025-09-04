@@ -38,25 +38,39 @@ add_filter('pre_set_site_transient_update_plugins', function($transient) {
     return $transient;
 });
 
-add_filter('the_content', function($content) {
-    if (!is_singular('post') || !in_the_loop() || !is_main_query()) {
-        return $content;
+add_action('save_post', function($post_id, $post, $update) {
+    // Только для записей (post)
+    if ($post->post_type !== 'post') {
+        return;
     }
 
-    if (get_option('cosmy_show_featured', '1') !== '1') {
-        return $content;
+    // Не трогаем автосохранения и ревизии
+    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
+        return;
     }
-    
-    if (strpos($content, 'wp:post-featured-image') !== false) {
-        return $content;
+    if (wp_is_post_revision($post_id)) {
+        return;
     }
-    // Gutenberg-блок с параметрами
+
+    // Берём глобальные настройки плагина
+    $settings = get_site_option('cosmy_settings', []);
+    if (empty($settings['cosmy_show_featured'])) {
+        return; // выключено в настройках
+    }
+
+    // Проверяем, есть ли уже блок "Изображение записи"
+    if (strpos($post->post_content, 'wp:post-featured-image') !== false) {
+        return;
+    }
+
+    // Добавляем Gutenberg-блок в начало
     $block = '<!-- wp:post-featured-image {"sizeSlug":"large","aspectRatio":"16/9","scale":"cover","style":{"spacing":{"margin":{"bottom":"1.5rem"}},"border":{"radius":"20px"}}} /-->';
-
-    // Вставляем блок в начало, если его ещё нет
-    if (strpos($content, 'wp:post-featured-image') === false) {
-        $content = $block . "\n" . $content;
-    }
-
-    return $content;
-});
+    
+    // Избегаем рекурсии
+    remove_action('save_post', __FUNCTION__, 10);
+    wp_update_post([
+        'ID'           => $post_id,
+        'post_content' => $block . "\n" . $post->post_content,
+    ]);
+    add_action('save_post', __FUNCTION__, 10, 3);
+}, 10, 3);
