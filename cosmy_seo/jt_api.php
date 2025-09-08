@@ -119,7 +119,7 @@ function cosmy_get_article(WP_REST_Request $request) {
         'paged' => $page,
 		'orderby' => 'date',
     	'order' => 'DESC',
-		'post_category' => $default_category_id,
+		'cat' => $default_category_id,
     ];
     $query = new WP_Query($args);
     $posts = [];
@@ -145,6 +145,7 @@ function cosmy_get_article(WP_REST_Request $request) {
         'limit' => $limit,
         'total' => (int) $query->found_posts,
         'posts' => $posts,
+        'category'=> $args
     ];
 }
 
@@ -178,6 +179,10 @@ function cosmy_post_article(WP_REST_Request $request) {
 
 		if (isset($params['excerpt'])) {
 			$post_data['post_excerpt'] = $excerpt;
+		}
+
+        if (isset($params['tags'])) {
+			$post_data['tags_input'] = $tags;
 		}
         $post_id = wp_update_post($post_data, true);
         $action = 'updated';
