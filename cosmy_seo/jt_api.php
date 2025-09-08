@@ -274,6 +274,11 @@ function cosmy_get_tags(WP_REST_Request $request) {
         'hide_empty' => false,
         'number'     => $limit,
 		'meta_query' => [
+            'relation' => 'OR',
+            [
+                'key'     => 'processed',
+                'compare' => 'NOT EXISTS',
+            ],
 			[
 				'key'     => 'processed',
 				'value'   => $flag,
