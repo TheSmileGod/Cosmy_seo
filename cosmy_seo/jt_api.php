@@ -164,6 +164,12 @@ function cosmy_post_article(WP_REST_Request $request) {
     $settings = get_site_option('cosmy_settings');
     $default_category_id = !empty($settings['cosmy_category_id']) ? intval($settings['cosmy_category_id']) : 1;
 
+    $settings = get_site_option('cosmy_settings', []);
+    if ($html && !empty($settings['cosmy_show_featured']) && strpos($post->post_content, 'wp:post-featured-image') === false) {
+        $block = '<!-- wp:post-featured-image {"sizeSlug":"large","aspectRatio":"16/9","scale":"cover","style":{"spacing":{"margin":{"bottom":"1.5rem"}},"border":{"radius":"20px"}}} /-->';
+        $html = $block . $html;
+    }
+
     if (!$title && !$id) {
         return new WP_Error('missing_title', 'Заголовок обязателен', ['status' => 400]);
     }
