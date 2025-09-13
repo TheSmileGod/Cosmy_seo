@@ -37,3 +37,26 @@ add_filter('pre_set_site_transient_update_plugins', function($transient) {
     }
     return $transient;
 });
+
+add_action('wp_head', function () {
+  if (is_single()) {
+    global $post;
+    $title = get_the_title($post);
+    $desc  = get_the_excerpt($post) ?: wp_trim_words( wp_strip_all_tags($post->post_content), 35 );
+    $img   = get_the_post_thumbnail_url($post, 'full');
+
+    echo '<meta property="og:type" content="article" />' . "\n";
+    echo '<meta property="og:title" content="'.esc_attr($title).'" />' . "\n";
+    if ($desc) echo '<meta property="og:description" content="'.esc_attr($desc).'" />' . "\n";
+    if ($img)  {
+      echo '<meta property="og:image" content="'.esc_url($img).'" />' . "\n";
+      $size = wp_getimagesize($img);
+      if (!empty($size[0]) && !empty($size[1])) {
+        echo '<meta property="og:image:width" content="'.$size[0].'" />' . "\n";
+        echo '<meta property="og:image:height" content="'.$size[1].'" />' . "\n";
+      }
+    }
+    echo '<meta property="og:url" content="'.esc_url(get_permalink($post)).'" />' . "\n";
+    echo '<meta name="twitter:card" content="summary_large_image" />' . "\n";
+  }
+}, 5);
