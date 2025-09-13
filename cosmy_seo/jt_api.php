@@ -224,6 +224,11 @@ function cosmy_post_article(WP_REST_Request $request) {
         set_post_thumbnail($post_id, $attachment_id);
     }
 
+    wp_update_post([
+        'ID'           => $post_id,
+        'post_status'  => 'publish',
+    ]);
+
     return ['success' => true, 'post_id' => $post_id];
 }
 
