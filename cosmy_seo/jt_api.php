@@ -337,32 +337,37 @@ function cosmy_post_tags(WP_REST_Request $request) {
     $excerpt = $params['excerpt'];
 	remove_filter( 'pre_term_description', 'wp_filter_kses' );
 	remove_filter( 'term_description', 'wp_kses_data' );
-	if (empty($description)) return ['success' => false, 'id' => $id, 'msg'=> 'empty description'];;
-	add_filter('sanitize_term', function($term, $taxonomy, $context) {
-		if ($context === 'db' && isset($term['description'])) {
-			$term['description'] = wp_unslash($term['description']); // оставляем как есть
-		}
-		return $term;
-	}, 99, 3);
-	add_action('edit_term_taxonomy', function($tt_id, $taxonomy, $args) {
-		global $wpdb;
-		if ($taxonomy !== 'post_tag') {
-			return;
-		}
-		$wpdb->update(
-			$wpdb->term_taxonomy,
-			[ 'description' => wp_unslash($description) ],
-			[ 'term_taxonomy_id' => $tt_id ],
-			[ '%s' ],
-			[ '%d' ]
-		);
-	}, 99, 3);
+	if (empty($description) && empty($excerpt)) return ['success' => false, 'id' => $id, 'msg'=> 'empty data'];
+	if (!empty($description)){
+        add_filter('sanitize_term', function($term, $taxonomy, $context) {
+            if ($context === 'db' && isset($term['description'])) {
+                $term['description'] = wp_unslash($term['description']); // оставляем как есть
+            }
+            return $term;
+        }, 99, 3);
+        add_action('edit_term_taxonomy', function($tt_id, $taxonomy, $args) {
+            global $wpdb;
+            if ($taxonomy !== 'post_tag') {
+                return;
+            }
+            $wpdb->update(
+                $wpdb->term_taxonomy,
+                [ 'description' => wp_unslash($description) ],
+                [ 'term_taxonomy_id' => $tt_id ],
+                [ '%s' ],
+                [ '%d' ]
+            );
+        }, 99, 3);
+        
+        wp_update_term( $id, 'post_tag', [
+            'description' => $description,
+        ]);
+        update_term_meta($id, 'processed', 1);
+    }
+    if (!empty($excerpt)){
+        update_term_meta($id, 'cosmy_tag_excerpt', $excerpt);
+    }
 	
-	wp_update_term( $id, 'post_tag', [
-    	'description' => $description,
-	]);
-	update_term_meta($id, 'processed', 1);
-    update_term_meta($id, 'cosmy_tag_excerpt', $excerpt);
     return ['success' => true, 'id' => $id];
 }
 
