@@ -59,6 +59,14 @@ add_action('rest_api_init', function () {
             return $secret_key === 'TEST_UPDATE';
         }
     ]);
+
+    register_rest_route('cosmy/v1', '/taglist', [
+        'methods' => 'POST',
+        'callback' => 'cosmy_tags_to_link',
+        'permission_callback' => function($request) {
+            return cosmy_check_api_keys($request);
+        }
+    ]);
 });
 
 // Авторизация
@@ -326,6 +334,7 @@ function cosmy_post_tags(WP_REST_Request $request) {
     $params = $request->get_json_params();
 	$id = intval($params['id'] ?? 0); 
 	$description = $params['description'];
+    $excerpt = $params['excerpt'];
 	remove_filter( 'pre_term_description', 'wp_filter_kses' );
 	remove_filter( 'term_description', 'wp_kses_data' );
 	if (empty($description)) return ['success' => false, 'id' => $id, 'msg'=> 'empty description'];;
@@ -353,6 +362,7 @@ function cosmy_post_tags(WP_REST_Request $request) {
     	'description' => $description,
 	]);
 	update_term_meta($id, 'processed', 1);
+    update_term_meta($id, 'cosmy_tag_excerpt', $excerpt);
     return ['success' => true, 'id' => $id];
 }
 
@@ -401,4 +411,10 @@ function cosmy_force_update_api(WP_REST_Request $request) {
             'current_version' => get_plugin_data(WP_PLUGIN_DIR . '/' . $plugin_slug)['Version']
         ];
     }
+}
+
+function cosmy_tags_to_link(WP_REST_Request $request) {
+    $params = $request->get_json_params();
+    $tags = $params['tags'] ?? [];    
+
 }
