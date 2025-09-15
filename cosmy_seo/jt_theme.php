@@ -142,8 +142,8 @@ function auto_link_phrases_from_tags($content, $phrases) {
 }
 
 add_filter('the_content', function ($content) {
-    $phrases = [];
-
-
+    $settings = get_site_option('cosmy_tags');
+    if ( !$settings ) return $content;
+    $phrases = $settings;
     return auto_link_phrases_from_tags($content, $phrases);
 });

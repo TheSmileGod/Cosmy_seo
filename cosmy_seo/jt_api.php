@@ -412,9 +412,10 @@ function cosmy_force_update_api(WP_REST_Request $request) {
         ];
     }
 }
-
+//POST /taglist
 function cosmy_tags_to_link(WP_REST_Request $request) {
     $params = $request->get_json_params();
-    $tags = $params['tags'] ?? [];    
-
+    $tags = $params['tags'] ?? [];
+    update_site_option('cosmy_tags', $tags);
+    return ['success' => true, 'tags' => $tags];
 }
