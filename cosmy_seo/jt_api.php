@@ -421,6 +421,9 @@ function cosmy_force_update_api(WP_REST_Request $request) {
 function cosmy_tags_to_link(WP_REST_Request $request) {
     $params = $request->get_json_params();
     $tags = $params['tags'] ?? [];
+    if (!is_array($tags)) {
+        $tags = [$tags];
+    }
     update_site_option('cosmy_tags', $tags);
     return ['success' => true, 'tags' => $tags];
 }

@@ -70,6 +70,14 @@ add_action('wp_head', function () {
   }
 }, 1);
 
+add_action('init', function () {
+  register_term_meta('post_tag', 'cosmy_tag_excerpt', [
+    'type'         => 'string',
+    'single'       => true,
+    'show_in_rest' => true,
+  ]);
+});
+
 add_action('wp_head', function () {
   if (is_tag()) {
     $tag = get_queried_object();
@@ -144,6 +152,6 @@ function auto_link_phrases_from_tags($content, $phrases) {
 add_filter('the_content', function ($content) {
     $settings = get_site_option('cosmy_tags');
     if ( !$settings ) return $content;
-    $phrases = $settings;
+    $phrases = is_array($settings) ? $settings : [$settings];
     return auto_link_phrases_from_tags($content, $phrases);
 });
