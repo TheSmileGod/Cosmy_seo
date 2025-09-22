@@ -59,6 +59,13 @@ add_action('wp_head', function () {
     $meta_description = mb_substr(trim(preg_replace('/\s+/', ' ', $meta_description)), 0, 1000);
     $desc = $meta_description;
     echo '<meta name="description" content="' . esc_attr($meta_description) . '">' . "\n";
+    
+    $tags = wp_get_post_tags($post->ID, ['fields' => 'names']);
+    $meta_keywords = !empty($tags) ? implode(', ', $tags) : '';
+    if (!empty($meta_keywords)) {
+      echo '<meta name="keywords" content="' . esc_attr($meta_keywords) . '">' . "\n";
+    }
+
     if ($img)  {
       echo '<meta property="og:image" content="'.esc_url($img).'" />' . "\n";
       $size = wp_getimagesize($img);
@@ -84,7 +91,7 @@ add_action('wp_head', function () {
     $title = single_tag_title('', false);
 
     $meta_description = get_term_meta($tag->term_id, 'cosmy_tag_excerpt', true);
-
+    $meta_keywords = get_term_meta($tag->term_id, 'cosmy_tag_keywords', true);
     // Если пустое — fallback на стандартное описание
     if (empty($meta_description)) {
       $meta_description = term_description($tag->term_id, 'post_tag');
@@ -99,6 +106,7 @@ add_action('wp_head', function () {
 
 
     echo '<meta name="description" content="' . esc_attr($meta_description) . '">' . "\n";
+    echo '<meta name="keywords" content="' . esc_attr($meta_keywords) . '">' . "\n";
   }
 }, 1);
 
@@ -140,7 +148,7 @@ function auto_link_phrases_from_tags($content, $phrases) {
             // Подменяем только первое вхождение в сегменте
             $segment = preg_replace_callback($regex, function ($matches) use ($url) {
                 return '<a href="' . esc_url($url) . '">' . $matches[0] . '</a>';
-            }, $segment);
+            }, $segment, 1);
         }
 
         $segments[$i] = $segment;

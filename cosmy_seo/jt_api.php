@@ -237,7 +237,11 @@ function cosmy_post_article(WP_REST_Request $request) {
         'post_status'  => 'publish',
     ]);
 
-    return ['success' => true, 'post_id' => $post_id];
+    return [
+        'success' => true,
+        'post_id' => $post_id,
+        'url'     => get_permalink($post_id),
+    ];
 }
 
 //POST /upload
@@ -335,6 +339,10 @@ function cosmy_post_tags(WP_REST_Request $request) {
 	$id = intval($params['id'] ?? 0); 
 	$description = $params['description'];
     $excerpt = $params['excerpt'];
+    $keywords = $params['keywords'] ?? '';
+    if (is_array($keywords)) {
+        $keywords = implode(', ', $keywords);
+    }
 	remove_filter( 'pre_term_description', 'wp_filter_kses' );
 	remove_filter( 'term_description', 'wp_kses_data' );
 	if (empty($description) && empty($excerpt)) return ['success' => false, 'id' => $id, 'msg'=> 'empty data'];
@@ -367,7 +375,9 @@ function cosmy_post_tags(WP_REST_Request $request) {
     if (!empty($excerpt)){
         update_term_meta($id, 'cosmy_tag_excerpt', $excerpt);
     }
-	
+	if (!empty($keywords)){
+        update_term_meta($id, 'cosmy_tag_keywords', $excerpt);
+    }
     return ['success' => true, 'id' => $id];
 }
 
