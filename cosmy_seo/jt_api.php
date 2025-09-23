@@ -67,6 +67,14 @@ add_action('rest_api_init', function () {
             return cosmy_check_api_keys($request);
         }
     ]);
+
+    register_rest_route('cosmy/v1', '/info', [
+        'methods'  => 'GET',
+        'callback' => 'cosmy_site_info',
+        'permission_callback' => function($request) {
+            return cosmy_check_api_keys($request);
+        }
+    ]);
 });
 
 // Авторизация
@@ -111,7 +119,14 @@ function cosmy_check_api_keys(WP_REST_Request $request) {
     return false;
 }
 // Функционал
-
+//GET /info
+function cosmy_site_info(WP_REST_Request $request) {
+    return [
+        'name'        => get_bloginfo('name'),
+        'description' => get_bloginfo('description'),
+        'url'         => home_url(),
+    ];
+}
 //GET /article
 function cosmy_get_article(WP_REST_Request $request) {
     
