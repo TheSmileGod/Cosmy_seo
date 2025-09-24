@@ -78,7 +78,6 @@ add_action('rest_api_init', function () {
 });
 
 // Авторизация
-// test refresh comment
 function cosmy_check_api_keys(WP_REST_Request $request) {
     $auth_header = $request->get_header('authorization');
 
@@ -121,20 +120,43 @@ function cosmy_check_api_keys(WP_REST_Request $request) {
 // Функционал
 //GET /info
 function cosmy_site_info(WP_REST_Request $request) {
-    return [
+    $info = [
         'name'        => get_bloginfo('name'),
         'description' => get_bloginfo('description'),
         'url'         => home_url(),
     ];
+
+    $categories = get_terms([
+        'taxonomy'   => 'category',
+        'hide_empty' => true
+    ]);
+
+    $cats = [];
+    foreach ($categories as $cat) {
+        $cats[] = [
+            'id'          => $cat->term_id,
+            'name'        => $cat->name,
+            'slug'        => $cat->slug,
+            'count'       => $cat->count,
+            'link'        => get_category_link($cat->term_id),
+        ];
+    }
+
+    $info['categories'] = $cats;
+
+    return $info;
 }
+
 //GET /article
 function cosmy_get_article(WP_REST_Request $request) {
     
-    $page = max(1, (int) $request->get_param('page'));
+    $page = (int) $request->get_param('page', 1);
     $limit = (int) $request->get_param('limit', 10);
     $fields = $request->get_param('fields') ?: 'all';
 	$settings = get_site_option('cosmy_settings');
-	$default_category_id = !empty($settings['cosmy_category_id']) ? intval($settings['cosmy_category_id']) : 1;
+
+    $default_category_id = !empty($settings['cosmy_category_id']) ? intval($settings['cosmy_category_id']) : 1;
+    $cats = (int) $request->get_param('cats', $default_category_id);
     $args = [
         'post_type' => 'post',
         'post_status' => 'publish',
@@ -142,7 +164,7 @@ function cosmy_get_article(WP_REST_Request $request) {
         'paged' => $page,
 		'orderby' => 'date',
     	'order' => 'DESC',
-		'cat' => $default_category_id,
+		'cat' => $cats,
     ];
     $query = new WP_Query($args);
     $posts = [];
@@ -159,6 +181,7 @@ function cosmy_get_article(WP_REST_Request $request) {
 				'excerpt' => $post->post_excerpt,
 				'url' => get_permalink($post->ID),
                 'tags' => wp_get_post_tags($post->ID, ['fields' => 'names']),
+                'cats' => $cats
             ];
         }
     }
@@ -310,41 +333,61 @@ function cosmy_upload_image(WP_REST_Request $request) {
 }
 //GET /tags
 function cosmy_get_tags(WP_REST_Request $request) {
-    $limit = (int) $request->get_param('limit', 10);
-	$flag = (int) $request->get_param('flag', 1);
-    $tags = get_terms([
+    $limit = (int) $request->get_param('limit') ?: 10;
+    $page  = (int) $request->get_param('page') ?: 1;
+    $offset = ($page - 1) * $limit;
+
+    $cat_ids = $request->get_param('cats');
+    if (!empty($cat_ids) && !is_array($cat_ids)) {
+        $cat_ids = explode(',', $cat_ids);
+    }
+
+    $args = [
         'taxonomy'   => 'post_tag',
         'hide_empty' => false,
         'number'     => $limit,
-		'meta_query' => [
-            'relation' => 'OR',
-            [
-                'key'     => 'processed',
-                'compare' => 'NOT EXISTS',
-            ],
-			[
-				'key'     => 'processed',
-				'value'   => $flag,
-            	'compare' => '!=',
-			]
-		]
-    ]);
+        'offset'     => $offset,
+        'orderby'    => 'count',
+        'order'      => 'DESC',
+    ];
+
+    if (!empty($cat_ids)) {
+        $posts = get_posts([
+            'post_type'      => 'post',
+            'posts_per_page' => -1,
+            'fields'         => 'ids',
+            'category__in'   => $cat_ids,
+        ]);
+
+        if ($posts) {
+            $term_ids = wp_get_object_terms($posts, 'post_tag', ['fields' => 'ids']);
+            if (!is_wp_error($term_ids) && !empty($term_ids)) {
+                $args['include'] = $term_ids;
+            } else {
+                return []; // если тегов не найдено
+            }
+        } else {
+            return []; // если постов в категориях нет
+        }
+    }
+    
+    $tags = get_terms($args);
     $result = [];
 	
     foreach ($tags as $tag) {
-        if (!empty($tag->description)) {
-			update_term_meta($tag->term_id, 'processed', $flag);	
-		}
 		$result[] = [
             'id'          => $tag->term_id,
             'name'        => $tag->name,
             'slug'        => $tag->slug,
             'count'       => $tag->count,
             'link'        => get_tag_link($tag->term_id),
-            'description' => $tag->description, // вот оно 👌
+            'description' => $tag->description,
+            'meta'        => [
+                'cosmy_tag_excerpt' => get_term_meta($tag->term_id, 'cosmy_tag_excerpt', true),
+                'cosmy_tag_keywords' => get_term_meta($tag->term_id, 'cosmy_tag_keywords', true),
+            ]
         ];
     }
-	
 	return $result;
 }
 
@@ -385,7 +428,6 @@ function cosmy_post_tags(WP_REST_Request $request) {
         wp_update_term( $id, 'post_tag', [
             'description' => $description,
         ]);
-        update_term_meta($id, 'processed', 1);
     }
     if (!empty($excerpt)){
         update_term_meta($id, 'cosmy_tag_excerpt', $excerpt);
