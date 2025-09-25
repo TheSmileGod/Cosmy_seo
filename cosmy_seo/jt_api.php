@@ -115,7 +115,7 @@ function cosmy_check_api_keys(WP_REST_Request $request) {
         ]);
     }
 
-    return false;
+    return true;
 }
 // Функционал
 //GET /info
