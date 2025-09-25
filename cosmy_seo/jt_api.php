@@ -105,17 +105,11 @@ function cosmy_check_api_keys(WP_REST_Request $request) {
     list($public_key, $private_key) = explode(':', $decoded, 2);
 
 	// Сравниваем
-    if ($public_key !== $settings['cosmy_public_key'] || $private_key !== $settings['cosmy_private_key']) {
-        return new WP_Error('invalid_keys', 'Неверные API ключи', [
-            'status'            => 403,
-            'received_public'   => $public_key,
-            'expected_public'   => $settings['cosmy_public_key'],
-            'received_private'  => $private_key,
-            'expected_private'  => $settings['cosmy_private_key'],
-        ]);
+     if ($public_key === $settings['cosmy_public_key'] && $private_key === $settings['cosmy_private_key']) {
+        return true;
     }
 
-    return true;
+    return false;
 }
 // Функционал
 //GET /info
