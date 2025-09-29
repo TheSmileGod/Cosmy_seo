@@ -150,16 +150,33 @@ function cosmy_get_article(WP_REST_Request $request) {
 	$settings = get_site_option('cosmy_settings');
 
     $default_category_id = !empty($settings['cosmy_category_id']) ? intval($settings['cosmy_category_id']) : 1;
-    $cats = (int) $request->get_param('cats', $default_category_id);
+    $cats = $request->get_param('cats');
+
+    if (empty($cats)) {
+        $cats = [$default_category_id];
+    }
+
+    if (!is_array($cats)) {
+        $cats = [(int) $cats];
+    } else {
+        $cats = array_map('intval', $cats);
+    }
+
     $args = [
-        'post_type' => 'post',
-        'post_status' => 'publish',
+        'post_type'      => 'post',
+        'post_status'    => 'publish',
         'posts_per_page' => $limit,
-        'paged' => $page,
-		'orderby' => 'date',
-    	'order' => 'DESC',
-		'cat' => $cats,
+        'paged'          => $page,
+        'orderby'        => 'date',
+        'order'          => 'DESC',
     ];
+
+    if (count($cats) === 1) {
+        $args['cat'] = $cats[0];
+    } else {
+        $args['category__in'] = $cats;
+    }
+    
     $query = new WP_Query($args);
     $posts = [];
     foreach ($query->posts as $post) {
