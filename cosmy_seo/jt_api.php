@@ -414,7 +414,7 @@ function cosmy_post_tags(WP_REST_Request $request) {
     }
 	remove_filter( 'pre_term_description', 'wp_filter_kses' );
 	remove_filter( 'term_description', 'wp_kses_data' );
-	if (empty($description) && empty($excerpt)) return ['success' => false, 'id' => $id, 'msg'=> 'empty data'];
+	if (empty($description) && empty($excerpt) && empty($keywords)) return ['success' => false, 'id' => $id, 'msg'=> 'empty data'];
 	if (!empty($description)){
         add_filter('sanitize_term', function($term, $taxonomy, $context) {
             if ($context === 'db' && isset($term['description'])) {
