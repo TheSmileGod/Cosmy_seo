@@ -444,7 +444,7 @@ function cosmy_post_tags(WP_REST_Request $request) {
         update_term_meta($id, 'cosmy_tag_excerpt', $excerpt);
     }
 	if (!empty($keywords)){
-        update_term_meta($id, 'cosmy_tag_keywords', $excerpt);
+        update_term_meta($id, 'cosmy_tag_keywords', $keywords);
     }
     return ['success' => true, 'id' => $id];
 }
