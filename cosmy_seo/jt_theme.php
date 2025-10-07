@@ -163,3 +163,59 @@ add_filter('the_content', function ($content) {
     $phrases = is_array($settings) ? $settings : [$settings];
     return auto_link_phrases_from_tags($content, $phrases);
 });
+
+function cosmy_tag_related_keywords_html( $term_id ) {
+	$keywords = get_term_meta($term_id, 'cosmy_tag_keywords', true);
+	
+	if (!is_array($keywords)) {
+		if (is_string($keywords)) {
+			$keywords = array_map('trim', explode(',', $keywords));
+		} else {
+			$keywords = [];
+		}
+	}
+    foreach ( $keywords as $data ) {
+        
+        
+		$term = get_term_by('name', $data, 'post_tag');
+		$href = get_term_link( $term );
+		
+		if ( is_wp_error( $href ) ) { continue; }
+        $links .= sprintf(
+            '<a href="%s" rel="tag" class="tag-link %d"><span class="tag-hash">#</span>%s</a> ',
+            esc_url( $href ),
+            'test-link',
+            esc_html( $data )
+        );
+    }
+
+    $html = '<footer class="entry-footer"><div class="entry-tags"><span class="tags-links">' . $links . '</span></div></footer>';
+   	return $html;
+}
+
+function cosmy_append_keywords_to_tag_description( $desc ) {
+    if ( ! is_tag() ) return $desc;
+
+    $term = get_queried_object();
+    if ( ! $term || empty( $term->term_id ) ) return $desc;
+
+    $keywords_html = cosmy_tag_related_keywords_html( (int) $term->term_id );
+
+    return $desc . $keywords_html;
+}
+
+// Фильтры для разных тем/функций вывода описания
+add_filter( 'get_the_archive_description', 'cosmy_append_keywords_to_tag_description', 20 );
+
+add_action('wp_enqueue_scripts', function() {
+    // Проверяем, что это страница тега
+    if (is_tag()) {
+        wp_enqueue_script(
+            'cosmy-script',
+            plugin_dir_url(__FILE__) . 'assets/cosmy.js',
+            array('jquery'),
+            null,
+            true // в footer
+        );
+    }
+});
