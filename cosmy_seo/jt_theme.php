@@ -172,19 +172,22 @@ function auto_link_phrases_from_tags($content, $phrases) {
 }
 
 add_filter('the_content', function ($content) {
-    $post_id = get_the_ID();
-    $cache_key = 'cosmy_autolink_' . $post_id;
-    $cached = wp_cache_get($cache_key, 'cosmy');
-    if ($cached) return $cached;
+  if (is_single() || is_tag()) {
+		$post_id = get_the_ID();
+		$cache_key = 'cosmy_autolink_' . $post_id;
+		$cached = wp_cache_get($cache_key, 'cosmy');
+		if ($cached) return $cached;
 
-    $settings = get_site_option('cosmy_tags');
-    if (!$settings) return $content;
-    $phrases = is_array($settings) ? $settings : [$settings];
+		$settings = get_site_option('cosmy_tags');
+		if (!$settings) return $content;
+		$phrases = is_array($settings) ? $settings : [$settings];
 
-    $linked = auto_link_phrases_from_tags($content, $phrases);
-    wp_cache_set($cache_key, $linked, 'cosmy', 24 * HOUR_IN_SECONDS);
+		$linked = auto_link_phrases_from_tags($content, $phrases);
+		wp_cache_set($cache_key, $linked, 'cosmy', 24 * HOUR_IN_SECONDS);
 
-    return $linked;
+		return $linked;
+	}
+	return $content;
 });
 
 function cosmy_tag_related_keywords_html( $term_id ) {
