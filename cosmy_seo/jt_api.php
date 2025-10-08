@@ -82,7 +82,7 @@ function cosmy_check_api_keys(WP_REST_Request $request) {
     $auth_header = $request->get_header('authorization');
 
     // Настройки плагина
-    $settings = get_site_option('cosmy_settings');
+    $settings = cosmy_get_settings_cached();
 	
 	if ('test' === $settings['cosmy_public_key'] || 'test' === $settings['cosmy_private_key']) {
 		return true;
@@ -114,6 +114,13 @@ function cosmy_check_api_keys(WP_REST_Request $request) {
 // Функционал
 //GET /info
 function cosmy_site_info(WP_REST_Request $request) {
+    $cache_key = 'cosmy_site_info_cache';
+    $cached = get_transient($cache_key);
+
+    if ($cached !== false) {
+        return $cached; // 🔥 Берём из кэша, не трогаем базу
+    }
+
     $info = [
         'name'        => get_bloginfo('name'),
         'description' => get_bloginfo('description'),
@@ -122,32 +129,36 @@ function cosmy_site_info(WP_REST_Request $request) {
 
     $categories = get_terms([
         'taxonomy'   => 'category',
-        'hide_empty' => true
+        'hide_empty' => true,
+        'fields'     => 'id=>name', // ускоряет выборку
     ]);
 
     $cats = [];
-    foreach ($categories as $cat) {
+    foreach ($categories as $cat_id => $cat_name) {
+        $cat = get_term($cat_id);
         $cats[] = [
-            'id'          => $cat->term_id,
-            'name'        => $cat->name,
-            'slug'        => $cat->slug,
-            'count'       => $cat->count,
-            'link'        => get_category_link($cat->term_id),
+            'id'    => $cat->term_id,
+            'name'  => $cat->name,
+            'slug'  => $cat->slug,
+            'count' => $cat->count,
+            'link'  => get_category_link($cat_id),
         ];
     }
 
     $info['categories'] = $cats;
 
+    // 🕓 Кэшируем на день (или сколько нужно)
+    set_transient($cache_key, $info, 24 * 60 * MINUTE_IN_SECONDS);
+
     return $info;
 }
-
 //GET /article
 function cosmy_get_article(WP_REST_Request $request) {
     
     $page = (int) $request->get_param('page', 1);
     $limit = (int) $request->get_param('limit', 10);
     $fields = $request->get_param('fields') ?: 'all';
-	$settings = get_site_option('cosmy_settings');
+    $settings = cosmy_get_settings_cached();
 
     $default_category_id = !empty($settings['cosmy_category_id']) ? intval($settings['cosmy_category_id']) : 1;
     $cats = $request->get_param('cats');
@@ -169,6 +180,9 @@ function cosmy_get_article(WP_REST_Request $request) {
         'paged'          => $page,
         'orderby'        => 'date',
         'order'          => 'DESC',
+        'update_post_meta_cache' => false, // ❌ не грузим мета-данные (ускоряет)
+        'update_post_term_cache' => false, // ❌ не грузим термы (ускоряет)
+        'no_found_rows'          => true,
     ];
 
     if (count($cats) === 1) {
@@ -218,10 +232,10 @@ function cosmy_post_article(WP_REST_Request $request) {
     $attachment_id = intval($params['attachment'] ?? 0);
 	$status = sanitize_text_field($params['status'] ?? 'draft');
 
-    $settings = get_site_option('cosmy_settings');
+
+    $settings = cosmy_get_settings_cached();
     $default_category_id = !empty($settings['cosmy_category_id']) ? intval($settings['cosmy_category_id']) : 1;
 
-    $settings = get_site_option('cosmy_settings', []);
     if ($html && !empty($settings['cosmy_show_featured']) && strpos($post->post_content, 'wp:post-featured-image') === false) {
         $block = '<!-- wp:post-featured-image {"sizeSlug":"large","aspectRatio":"16/9","scale":"cover","style":{"spacing":{"margin":{"bottom":"1.5rem"}},"border":{"radius":"20px"}}} /-->';
         $html = $block . $html;

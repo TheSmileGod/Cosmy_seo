@@ -21,8 +21,16 @@ add_filter('pre_set_site_transient_update_plugins', function($transient) {
     $plug_refresh_check = "https://raw.githubusercontent.com/TheSmileGod/Cosmy_seo/main/update/cosmy-plugin-update.json";
     $plug_url = 'https://github.com/TheSmileGod/Cosmy_seo';
     
-    $remote = wp_remote_get($plug_refresh_check);
-    if (is_wp_error($remote) || 200 !== wp_remote_retrieve_response_code($remote)) return $transient;
+    $cache_key = 'cosmy_update_check';
+    $cached = get_transient($cache_key);
+    if ($cached !== false) {
+        $remote = $cached;
+    } else {
+        $remote = wp_remote_get($plug_refresh_check);
+        if (!is_wp_error($remote) && 200 === wp_remote_retrieve_response_code($remote)) {
+            set_transient($cache_key, $remote, 86400);
+        }
+    }
     $remote = json_decode(wp_remote_retrieve_body($remote));
     $plugin = 'cosmy_seo/index.php';
 
@@ -123,45 +131,60 @@ function phrase_to_regex($phrase) {
 }
 
 function auto_link_phrases_from_tags($content, $phrases) {
+    $terms_map = wp_cache_get('cosmy_terms_map', 'cosmy');
+    if (!$terms_map) {
+        $terms = get_terms(['taxonomy' => 'post_tag', 'hide_empty' => false]);
+        $terms_map = [];
+        foreach ($terms as $t) {
+            $link = get_term_link($t);
+            if (!is_wp_error($link)) {
+                $terms_map[mb_strtolower($t->name)] = $link;
+            }
+        }
+        wp_cache_set('cosmy_terms_map', $terms_map, 'cosmy', 24 * HOUR_IN_SECONDS);
+    }
     // Разбиваем на сегменты: теги (<...>) и текст
     $segments = preg_split('/(<[^>]+>)/u', $content, -1, PREG_SPLIT_DELIM_CAPTURE);
+    
+    $regex_cache = [];
+    foreach ($phrases as $phrase) {
+        $phrase_lower = mb_strtolower(trim($phrase));
+        if (isset($terms_map[$phrase_lower])) {
+            $regex_cache[$phrase_lower] = phrase_to_regex($phrase);
+        }
+    }
 
     foreach ($segments as $i => $segment) {
-        // Пропускаем HTML-теги (<...>)
-        if (preg_match('/^<[^>]+>$/u', $segment)) {
-            continue;
-        }
+        if (preg_match('/^<[^>]+>$/u', $segment)) continue;
 
-        // Работаем только с текстовыми сегментами
-        foreach ($phrases as $phrase) {
-            $term = get_term_by('name', $phrase, 'post_tag');
-            if (!$term || is_wp_error($term)) {
-                continue;
-            }
-            $url = get_term_link($term);
-            if (is_wp_error($url)) {
-                continue;
-            }
+        foreach ($regex_cache as $phrase_lower => $regex) {
+            $url = $terms_map[$phrase_lower];
 
-            $regex = phrase_to_regex($phrase);
-
-            // Подменяем только первое вхождение в сегменте
+            // Подменяем только первое вхождение
             $segment = preg_replace_callback($regex, function ($matches) use ($url) {
-                return '<a href="' . esc_url($url) . '">' . $matches[0] . '</a>';
+                return '<a href="' . esc_url($url) . '">' . esc_html($matches[0]) . '</a>';
             }, $segment, 1);
         }
 
         $segments[$i] = $segment;
     }
-
     return implode('', $segments);
 }
 
 add_filter('the_content', function ($content) {
+    $post_id = get_the_ID();
+    $cache_key = 'cosmy_autolink_' . $post_id;
+    $cached = wp_cache_get($cache_key, 'cosmy');
+    if ($cached) return $cached;
+
     $settings = get_site_option('cosmy_tags');
-    if ( !$settings ) return $content;
+    if (!$settings) return $content;
     $phrases = is_array($settings) ? $settings : [$settings];
-    return auto_link_phrases_from_tags($content, $phrases);
+
+    $linked = auto_link_phrases_from_tags($content, $phrases);
+    wp_cache_set($cache_key, $linked, 'cosmy', 24 * HOUR_IN_SECONDS);
+
+    return $linked;
 });
 
 function cosmy_tag_related_keywords_html( $term_id ) {
@@ -174,23 +197,21 @@ function cosmy_tag_related_keywords_html( $term_id ) {
 			$keywords = [];
 		}
 	}
-    foreach ( $keywords as $data ) {
-        
-        
-		$term = get_term_by('name', $data, 'post_tag');
-		$href = get_term_link( $term );
-		
-		if ( is_wp_error( $href ) ) { continue; }
-        $links .= sprintf(
-            '<a href="%s" rel="tag" class="tag-link %d"><span class="tag-hash">#</span>%s</a> ',
-            esc_url( $href ),
-            'test-link',
-            esc_html( $data )
-        );
-    }
-
-    $html = '<footer class="entry-footer"><div class="entry-tags"><span class="tags-links">' . $links . '</span></div></footer>';
-   	return $html;
+  $links_arr = [];
+  foreach ($keywords as $data) {
+    $term = get_term_by('name', $data, 'post_tag');
+    $href = get_term_link( $term );
+    if ( is_wp_error( $href ) ) { continue; }
+    $links_arr[] = sprintf(
+      '<a href="%s" rel="tag" class="tag-link %d"><span class="tag-hash">#</span>%s</a>',
+      esc_url($href),
+      'test-link',
+      esc_html($data)
+    );
+  }
+  $links = implode(' ', $links_arr);  
+  $html = '<footer class="entry-footer"><div class="entry-tags"><span class="tags-links">' . $links . '</span></div></footer>';
+  return $html;
 }
 
 function cosmy_append_keywords_to_tag_description( $desc ) {
@@ -219,3 +240,11 @@ add_action('wp_enqueue_scripts', function() {
         );
     }
 });
+
+function cosmy_get_settings_cached() {
+    static $cache = null;
+    if ($cache === null) {
+        $cache = get_site_option('cosmy_settings');
+    }
+    return $cache;
+}
