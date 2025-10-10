@@ -230,17 +230,32 @@ function cosmy_append_keywords_to_tag_description( $desc ) {
 
 // Фильтры для разных тем/функций вывода описания
 add_filter( 'get_the_archive_description', 'cosmy_append_keywords_to_tag_description', 20 );
-
 add_action('wp_enqueue_scripts', function() {
-    // Проверяем, что это страница тега
     if (is_tag()) {
-        wp_enqueue_script(
-            'cosmy-script',
-            plugin_dir_url(__FILE__) . 'assets/cosmy.js',
-            array('jquery'),
-            null,
-            true // в footer
-        );
+        $tag = get_queried_object();
+
+        // Проверяем, что есть описание у текущего тега
+        if (!empty($tag->description)) {
+            wp_enqueue_script(
+                'cosmy-script',
+                plugin_dir_url(__FILE__) . 'assets/cosmy.js',
+                array('jquery'),
+                null,
+                true // в footer
+            );
+        }
+    }
+});
+
+add_action('wp_head', function() {
+    if (is_tag()) {
+        $tag = get_queried_object();
+        $custom_css = get_site_option('cosmy_custom_css', '');
+        
+        if (!empty($tag->description) && !empty(trim($custom_css))) {
+            echo "<style id='cosmy-custom-css'>\n" . $custom_css . "\n</style>";
+        }
+       
     }
 });
 
