@@ -475,7 +475,8 @@ function cosmy_force_update_api(WP_REST_Request $request) {
     $was_active = is_plugin_active($plugin_slug);
 
     delete_site_transient('update_plugins');
-    wp_clean_plugins_cache();
+    set_site_transient('update_plugins', null);
+    wp_clean_plugins_cache(true);
     wp_update_plugins();
     
     $updates = get_site_transient('update_plugins');
