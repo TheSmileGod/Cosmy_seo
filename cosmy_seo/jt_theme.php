@@ -26,12 +26,12 @@ add_filter('pre_set_site_transient_update_plugins', function($transient) {
     if ($cached !== false) {
         $remote = $cached;
     } else {
-        $remote = wp_remote_get($plug_refresh_check);
-        if (!is_wp_error($remote) && 200 === wp_remote_retrieve_response_code($remote)) {
-            set_transient($cache_key, $remote, 86400);
+        $response = wp_remote_get($plug_refresh_check);
+        if (!is_wp_error($response) && 200 === wp_remote_retrieve_response_code($response)) {
+          $remote = json_decode(wp_remote_retrieve_body($response));
+          set_transient($cache_key, $remote, 10 * MINUTE_IN_SECONDS);
         }
     }
-    $remote = json_decode(wp_remote_retrieve_body($remote));
     $plugin = 'cosmy_seo/index.php';
 
     if ($remote && version_compare($current_version, $remote->version, '<')) {
