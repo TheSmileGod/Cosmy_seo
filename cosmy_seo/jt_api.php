@@ -362,6 +362,8 @@ function cosmy_get_tags(WP_REST_Request $request) {
     $limit = (int) $request->get_param('limit') ?: 10;
     $page  = (int) $request->get_param('page') ?: 1;
     $offset = ($page - 1) * $limit;
+    $top    = $request->get_param('top');
+    $settings = get_site_option('cosmy_tags');
 
     $cat_ids = $request->get_param('cats');
     if (!empty($cat_ids) && !is_array($cat_ids)) {
@@ -397,6 +399,13 @@ function cosmy_get_tags(WP_REST_Request $request) {
         }
     }
     
+      // Если top=false, то включаем теги из настроек
+    if ($top === 'false' || $top === false) {
+        if (!empty($settings)) {
+            $args['name'] = $settings;
+        }
+    }
+
     $tags = get_terms($args);
     $result = [];
 	
@@ -519,6 +528,18 @@ function cosmy_tags_to_link(WP_REST_Request $request) {
     if (!is_array($tags)) {
         $tags = [$tags];
     }
+
+    foreach ($tags as $tag_name) {
+        $tag_name = trim($tag_name);
+        if (empty($tag_name)) {
+            continue;
+        }
+        $term = get_term_by('name', $tag_name, 'post_tag');
+        if (!$term) {
+            wp_insert_term($tag_name, 'post_tag');
+        }
+    }
+
     update_site_option('cosmy_tags', $tags);
     return ['success' => true, 'tags' => $tags];
 }
