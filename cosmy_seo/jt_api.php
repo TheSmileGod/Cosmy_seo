@@ -284,6 +284,7 @@ function cosmy_post_article(WP_REST_Request $request) {
 			'post_category' => [$default_category_id],
     	];
         $post_id = wp_insert_post($post_data, true);
+        update_post_meta($post_id, '_cosmy_seo_post', current_time('mysql'));
         $action = 'created';
     }
 
@@ -453,6 +454,7 @@ function cosmy_post_tags(WP_REST_Request $request) {
         wp_update_term( $id, 'post_tag', [
             'description' => $description,
         ]);
+        update_term_meta($id, '_cosmy_seo_tag', current_time('mysql'));
     }
     if (!empty($excerpt)){
         update_term_meta($id, 'cosmy_tag_excerpt', $excerpt);
