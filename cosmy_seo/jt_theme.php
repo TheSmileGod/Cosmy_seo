@@ -109,7 +109,7 @@ add_action('wp_head', function () {
         return;
       }
 
-      $meta_keywords    = get_post_meta($product->get_id(), 'cosmy_prod_keywords', true);
+      $meta_keywords    = get_post_meta($product->get_id(), 'cosmy_prod_keyword', true);
       $meta_description = $product->get_short_description();
 
       echo '<meta name="description" content="' . esc_attr($meta_description) . '">' . "\n";
