@@ -610,7 +610,18 @@ function cosmy_get_prod(WP_REST_Request $request) {
 
         // Получаем категории (ID)
         $cat_ids = wp_get_post_terms($post->ID, 'product_cat', ['fields' => 'ids']);
-        $hierarchies = array_map('cosmy_get_category_chain', $cat_ids ?: []);
+
+        $longest_chain = [];
+        foreach ($cat_ids as $cat_id) {
+            $chain = cosmy_get_category_chain($cat_id);
+            if (count($chain) > count($longest_chain)) {
+                $longest_chain = $chain;
+            }
+        }
+
+        // 📁 превращаем цепочку в строку через /
+        $cat_string = implode(' / ', array_map(fn($c) => $c['name'], $longest_chain));
+
         
         $items[] = [
             'id'          => $post->ID,
