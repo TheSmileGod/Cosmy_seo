@@ -47,7 +47,7 @@ add_filter('pre_set_site_transient_update_plugins', function($transient) {
 });
 
 add_action('wp_head', function () {
-  if (is_single()) {
+  if (is_single() && !is_product()) {
 	global $post;
 	$settings = cosmy_get_settings_cached();
     $category_id = (int)$settings['cosmy_category_id'];
@@ -99,6 +99,23 @@ add_action('init', function () {
     'show_in_rest' => true,
   ]);
 });
+
+add_action('wp_head', function () {
+    if (is_product()) {
+      global $post;
+
+      $product = wc_get_product($post->ID);
+      if (!$product) {
+        return;
+      }
+
+      $meta_keywords    = get_post_meta($product->get_id(), 'cosmy_prod_keywords', true);
+      $meta_description = $product->get_short_description();
+
+      echo '<meta name="description" content="' . esc_attr($meta_description) . '">' . "\n";
+      echo '<meta name="keywords" content="' . esc_attr($meta_keywords) . '">' . "\n";
+    }
+}, 1);
 
 add_action('wp_head', function () {
   if (is_tag()) {
