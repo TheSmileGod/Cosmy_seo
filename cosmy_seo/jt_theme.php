@@ -48,38 +48,45 @@ add_filter('pre_set_site_transient_update_plugins', function($transient) {
 
 add_action('wp_head', function () {
   if (is_single()) {
-    global $post;
-    $title = get_the_title($post);
-    $img   = get_the_post_thumbnail_url($post, 'full');
-    
-    // Берём кастомное поле meta_description (если вдруг будет)
-    $meta_description = get_post_meta($post->ID, '_meta_description', true);
+	global $post;
+	$settings = cosmy_get_settings_cached();
+    $category_id = (int)$settings['cosmy_category_id'];
+    if ($category_id) {
+      $categories = wp_get_post_categories($post->ID);
+      if (in_array($category_id, $categories)) {
+        $title = get_the_title($post);
+		    $img   = get_the_post_thumbnail_url($post, 'full');
 
-    // Если нет — используем excerpt или обрезанный контент
-    if (empty($meta_description)) {
-        if (has_excerpt($post->ID)) {
-            $meta_description = strip_tags($post->post_excerpt);
-        } else {
-            $meta_description = wp_strip_all_tags($post->post_content);
-        }
-    }
+        // Берём кастомное поле meta_description (если вдруг будет)
+        $meta_description = get_post_meta($post->ID, '_meta_description', true);
 
-    $meta_description = mb_substr(trim(preg_replace('/\s+/', ' ', $meta_description)), 0, 1000);
-    $desc = $meta_description;
-    echo '<meta name="description" content="' . esc_attr($meta_description) . '">' . "\n";
-    
-    $tags = wp_get_post_tags($post->ID, ['fields' => 'names']);
-    $meta_keywords = !empty($tags) ? implode(', ', $tags) : '';
-    if (!empty($meta_keywords)) {
-      echo '<meta name="keywords" content="' . esc_attr($meta_keywords) . '">' . "\n";
-    }
+		// Если нет — используем excerpt или обрезанный контент
+		if (empty($meta_description)) {
+			if (has_excerpt($post->ID)) {
+				$meta_description = strip_tags($post->post_excerpt);
+			} else {
+				$meta_description = wp_strip_all_tags($post->post_content);
+			}
+		}
 
-    if ($img)  {
-      echo '<meta property="og:image" content="'.esc_url($img).'" />' . "\n";
-      $size = wp_getimagesize($img);
-      if (!empty($size[0]) && !empty($size[1])) {
-        echo '<meta property="og:image:width" content="'.$size[0].'" />' . "\n";
-        echo '<meta property="og:image:height" content="'.$size[1].'" />' . "\n";
+		$meta_description = mb_substr(trim(preg_replace('/\s+/', ' ', $meta_description)), 0, 1000);
+		$desc = $meta_description;
+		echo '<meta name="description" content="' . esc_attr($meta_description) . '">' . "\n";
+
+		$tags = wp_get_post_tags($post->ID, ['fields' => 'names']);
+		$meta_keywords = !empty($tags) ? implode(', ', $tags) : '';
+		if (!empty($meta_keywords)) {
+		  echo '<meta name="keywords" content="' . esc_attr($meta_keywords) . '">' . "\n";
+		}
+
+		if ($img)  {
+		  echo '<meta property="og:image" content="'.esc_url($img).'" />' . "\n";
+		  $size = wp_getimagesize($img);
+		  if (!empty($size[0]) && !empty($size[1])) {
+			echo '<meta property="og:image:width" content="'.$size[0].'" />' . "\n";
+			echo '<meta property="og:image:height" content="'.$size[1].'" />' . "\n";
+		  }
+		}
       }
     }
   }
@@ -170,10 +177,19 @@ function auto_link_phrases_from_tags($content, $phrases) {
     }
     return implode('', $segments);
 }
-
+/*
 add_filter('the_content', function ($content) {
   if (is_single() || is_tag()) {
+	  	$settings = cosmy_get_settings_cached();
+	    $category_id = (int)$settings['cosmy_category_id'];
+		
 		$post_id = get_the_ID();
+  	if ($category_id && !is_tag()) {
+		  $categories = wp_get_post_categories($post_id);
+		  if (!in_array($category_id, $categories)) {
+			  return $content;
+		  }
+		}
 		$cache_key = 'cosmy_autolink_' . $post_id;
 		$cached = wp_cache_get($cache_key, 'cosmy');
 		if ($cached) return $cached;
@@ -189,7 +205,7 @@ add_filter('the_content', function ($content) {
 	}
 	return $content;
 });
-
+*/
 function cosmy_tag_related_keywords_html( $term_id ) {
 	$keywords = get_term_meta($term_id, 'cosmy_tag_keywords', true);
 	
