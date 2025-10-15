@@ -101,6 +101,9 @@ add_action('init', function () {
 });
 
 add_action('wp_head', function () {
+    if (!function_exists('is_product')) {
+        return; // WooCommerce ещё не подгружен
+    }
     if (is_product()) {
       global $post;
 
