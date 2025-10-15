@@ -282,3 +282,24 @@ function cosmy_get_settings_cached() {
     }
     return $cache;
 }
+
+function cosmy_get_category_chain($term_id) {
+    static $cache = [];
+    if (isset($cache[$term_id])) return $cache[$term_id];
+
+    $chain = [];
+    $term = get_term($term_id, 'product_cat');
+
+    while ($term && !is_wp_error($term)) {
+        array_unshift($chain, [
+            'id'   => $term->term_id,
+            'name' => $term->name,
+            'slug' => $term->slug,
+        ]);
+        if (!$term->parent) break;
+        $term = get_term($term->parent, 'product_cat');
+    }
+
+    $cache[$term_id] = $chain;
+    return $chain;
+}

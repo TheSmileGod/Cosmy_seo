@@ -12,6 +12,7 @@ if (!defined('ABSPATH')) {
 }
 
 add_action('rest_api_init', function () {
+    //post
     register_rest_route('cosmy/v1', '/article', [
         'methods' => 'GET',
         'callback' => 'cosmy_get_article',
@@ -27,7 +28,23 @@ add_action('rest_api_init', function () {
             return cosmy_check_api_keys($request);
         }
     ]);
+    //product
+    register_rest_route('cosmy/v1', '/prod', [
+        'methods' => 'GET',
+        'callback' => 'cosmy_get_prod',
+        'permission_callback' => function($request) {
+            return cosmy_check_api_keys($request);
+        }
+    ]);
 
+    register_rest_route('cosmy/v1', '/prod', [
+        'methods' => 'POST',
+        'callback' => 'cosmy_post_prod',
+        'permission_callback' => function($request) {
+            return cosmy_check_api_keys($request);
+        }
+    ]);
+    //tags
     register_rest_route('cosmy/v1', '/tags', [
         'methods' => 'GET',
         'callback' => 'cosmy_get_tags',
@@ -42,7 +59,7 @@ add_action('rest_api_init', function () {
             return cosmy_check_api_keys($request);
         }
     ]);
-
+    //image upload
     register_rest_route('cosmy/v1', '/upload', [
         'methods' => 'POST',
         'callback' => 'cosmy_upload_image',
@@ -50,7 +67,7 @@ add_action('rest_api_init', function () {
             return cosmy_check_api_keys($request);
         }
     ]);
-
+    //update plugin
     register_rest_route('cosmy/v1', '/force-update', [
         'methods' => 'POST',
         'callback' => 'cosmy_force_update_api',
@@ -59,7 +76,7 @@ add_action('rest_api_init', function () {
             return $secret_key === 'TEST_UPDATE';
         }
     ]);
-
+    //tag for link
     register_rest_route('cosmy/v1', '/taglist', [
         'methods' => 'POST',
         'callback' => 'cosmy_tags_to_link',
@@ -67,7 +84,7 @@ add_action('rest_api_init', function () {
             return cosmy_check_api_keys($request);
         }
     ]);
-
+    //site main info
     register_rest_route('cosmy/v1', '/info', [
         'methods'  => 'GET',
         'callback' => 'cosmy_site_info',
@@ -542,4 +559,68 @@ function cosmy_tags_to_link(WP_REST_Request $request) {
 
     update_site_option('cosmy_tags', $tags);
     return ['success' => true, 'tags' => $tags];
+}
+//POST /prod
+function cosmy_post_prod(WP_REST_Request $request) {
+    $data = $request->get_json_params();
+    $post_id = intval($data['id'] ?? 0);
+
+    if (!$post_id || get_post_type($post_id) !== 'product') {
+        return new WP_Error('invalid_id', 'Товар с таким ID не найден', ['status' => 404]);
+    }
+
+    $update = [
+        'ID'           => $post_id,
+        'post_content' => wp_kses_post($data['content'] ?? ''),
+        'post_excerpt' => sanitize_textarea_field($data['excerpt'] ?? ''),
+    ];
+
+    $result = wp_update_post($update, true);
+    if (is_wp_error($result)) return $result;
+
+    if (isset($data['keyword'])) {
+        update_post_meta($post_id, 'cosmy_prod_keyword', sanitize_text_field($data['keyword']));
+    }
+
+    return [
+        'success' => true,
+        'id' => $post_id,
+        'message' => 'Описание и ключевые слова обновлены',
+    ];
+}
+//GET /prod
+function cosmy_get_prod(WP_REST_Request $request) {
+    $limit = max(1, intval($request->get_param('limit') ?? 10));
+
+   $query = new WP_Query([
+        'post_type'      => 'product',
+        'post_status'    => 'publish',
+        'posts_per_page' => $limit,
+        'no_found_rows'  => true,
+    ]);
+    $posts = $query->posts;
+    if (empty($posts)) {
+        return [];
+    }
+
+    $items = [];
+
+    foreach ($posts as $post) {
+        $keyword = get_post_meta($post->ID, 'cosmy_prod_keyword', true);
+
+        // Получаем категории (ID)
+        $cat_ids = wp_get_post_terms($post->ID, 'product_cat', ['fields' => 'ids']);
+        $hierarchies = array_map('cosmy_get_category_chain', $cat_ids ?: []);
+        
+        $items[] = [
+            'id'          => $post->ID,
+            'title'       => $post->post_title,
+            'content'     => $post->post_content,
+            'excerpt'     => $post->post_excerpt,
+            'categories'  => $hierarchies,
+            'cosmy_prod_keyword' => $keyword,
+        ];
+    }
+
+    return $items;
 }
