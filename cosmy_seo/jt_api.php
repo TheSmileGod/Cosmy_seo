@@ -628,7 +628,7 @@ function cosmy_get_prod(WP_REST_Request $request) {
             'title'       => $post->post_title,
             'content'     => $post->post_content,
             'excerpt'     => $post->post_excerpt,
-            'categories'  => $hierarchies,
+            'categories'  => $cat_string,
             'keyword'     => $keyword,
         ];
     }
