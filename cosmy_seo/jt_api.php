@@ -591,7 +591,7 @@ function cosmy_post_prod(WP_REST_Request $request) {
             wp_set_object_terms($post_id, $tags, 'product_tag', false);
         }
     }
-
+    update_post_meta($post_id, '_cosmy_seo_prod', current_time('mysql'));
     return [
         'success' => true,
         'id' => $post_id,

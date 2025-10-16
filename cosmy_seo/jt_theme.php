@@ -47,7 +47,7 @@ add_filter('pre_set_site_transient_update_plugins', function($transient) {
 });
 
 add_action('wp_head', function () {
-  if (is_single() && !is_product()) {
+  if (is_single()) {
 	global $post;
 	$settings = cosmy_get_settings_cached();
     $category_id = (int)$settings['cosmy_category_id'];
