@@ -580,6 +580,12 @@ function cosmy_post_prod(WP_REST_Request $request) {
 
     if (isset($data['keyword'])) {
         update_post_meta($post_id, 'cosmy_prod_keyword', sanitize_text_field($data['keyword']));
+
+        $tags = array_filter(array_map('trim', explode(',', $keyword_raw)));
+
+        if (!empty($tags)) {
+            wp_set_object_terms($post_id, $tags, 'product_tag', false);
+        }
     }
 
     return [
