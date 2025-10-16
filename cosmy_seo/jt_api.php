@@ -578,10 +578,14 @@ function cosmy_post_prod(WP_REST_Request $request) {
     $result = wp_update_post($update, true);
     if (is_wp_error($result)) return $result;
 
+    $keywords = $data['keywords'] ?? '';
+    if (is_array($keywords)) {
+        $keywords = implode(', ', $keywords);
+    }
     if (isset($data['keyword'])) {
-        update_post_meta($post_id, 'cosmy_prod_keyword', sanitize_text_field($data['keyword']));
+        update_post_meta($post_id, 'cosmy_prod_keyword', sanitize_text_field($keywords));
 
-        $tags = array_filter(array_map('trim', explode(',', $keyword)));
+        $tags = array_filter(array_map('trim', explode(',', $keywords)));
 
         if (!empty($tags)) {
             wp_set_object_terms($post_id, $tags, 'product_tag', false);
