@@ -286,10 +286,11 @@ add_action('wp_enqueue_scripts', function() {
 add_action('wp_head', function() {
     if (is_tag()) {
         $tag = get_queried_object();
-        $custom_css = get_site_option('cosmy_custom_css', '');
+        $custom_css = wp_unslash(get_site_option('cosmy_custom_css', ''));
         
-        if (!empty($tag->description) && !empty(trim($custom_css))) {
-            echo "<style id='cosmy-custom-css'>\n" . $custom_css . "\n</style>";
+        if (!empty($tag->description)) {
+          echo "<style id='cosmy-custom-css-main'>\n" . COSMY_DEFAULT_CSS . "\n</style>";  
+          echo "<style id='cosmy-custom-css'>\n" . $custom_css . "\n</style>";
         }
        
     }
