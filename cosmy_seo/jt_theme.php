@@ -243,7 +243,7 @@ function cosmy_tag_related_keywords_html( $term_id ) {
     $href = get_term_link( $term );
     if ( is_wp_error( $href ) ) { continue; }
     $links_arr[] = sprintf(
-      '<a href="%s" rel="tag" class="tag-link %d"><span class="tag-hash">#</span>%s</a>',
+      '<a href="%s" rel="tag" class="tag-link %s"><span class="tag-hash">#</span>%s</a>',
       esc_url($href),
       'test-link',
       esc_html($data)
@@ -260,7 +260,7 @@ function cosmy_append_keywords_to_tag_description( $desc ) {
     $term = get_queried_object();
     if ( ! $term || empty( $term->term_id ) ) return $desc;
 
-    if (empty($tag->description)) return $desc;
+    if (empty($term->description)) return $desc;
 
     $keywords_html = cosmy_tag_related_keywords_html( (int) $term->term_id );
 
