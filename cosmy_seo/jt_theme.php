@@ -236,6 +236,7 @@ function cosmy_tag_related_keywords_html( $term_id ) {
 			$keywords = [];
 		}
 	}
+  if (!$keywords) return '';
   $links_arr = [];
   foreach ($keywords as $data) {
     $term = get_term_by('name', $data, 'post_tag');
@@ -258,6 +259,8 @@ function cosmy_append_keywords_to_tag_description( $desc ) {
 
     $term = get_queried_object();
     if ( ! $term || empty( $term->term_id ) ) return $desc;
+
+    if (empty($tag->description)) return $desc;
 
     $keywords_html = cosmy_tag_related_keywords_html( (int) $term->term_id );
 

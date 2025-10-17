@@ -223,6 +223,11 @@ function cosmy_get_article(WP_REST_Request $request) {
 				'excerpt' => $post->post_excerpt,
 				'url' => get_permalink($post->ID),
                 'tags' => wp_get_post_tags($post->ID, ['fields' => 'names']),
+                'flag' => [
+                    'create' => get_post_meta($post->ID, '_cosmy_seo_post', true)
+                    'tagger' => get_post_meta($post->ID, '_cosmy_seo_post_tagger', true),
+                    'excerpt' => get_post_meta($post->ID, '_cosmy_seo_post_excerpt', true),
+                ],
                 'cats' => $cats
             ];
         }
@@ -266,19 +271,22 @@ function cosmy_post_article(WP_REST_Request $request) {
 		$post_data = [
 			'ID' => $id
 		];
-		
+		$flag = '';
 		if (isset($params['status'])) {
 			$post_data['post_status'] = $status;
 		}
 
 		if (isset($params['excerpt'])) {
 			$post_data['post_excerpt'] = $excerpt;
+            $flag = '_excerpt';
 		}
 
         if (isset($params['tags'])) {
 			$post_data['tags_input'] = $tags;
+            $flag = '_tagger';
 		}
         $post_id = wp_update_post($post_data, true);
+        update_post_meta($post_id, '_cosmy_seo_post' . $flag, current_time('mysql'));
         $action = 'updated';
     } else {
 		if ( !function_exists( 'parse_blocks' ) ) {
@@ -301,7 +309,6 @@ function cosmy_post_article(WP_REST_Request $request) {
 			'post_category' => [$default_category_id],
     	];
         $post_id = wp_insert_post($post_data, true);
-        update_post_meta($post_id, '_cosmy_seo_post', current_time('mysql'));
         $action = 'created';
     }
 
@@ -395,7 +402,10 @@ function cosmy_get_tags(WP_REST_Request $request) {
         'orderby'    => 'count',
         'order'      => 'DESC',
     ];
-
+    if ($page > 1) {
+        $args['number'] = 100;
+        $args['offset'] = ($page - 1) * 100;
+    }
     if (!empty($cat_ids)) {
         $posts = get_posts([
             'post_type'      => 'post',
@@ -437,10 +447,25 @@ function cosmy_get_tags(WP_REST_Request $request) {
             'meta'        => [
                 'cosmy_tag_excerpt' => get_term_meta($tag->term_id, 'cosmy_tag_excerpt', true),
                 'cosmy_tag_keywords' => get_term_meta($tag->term_id, 'cosmy_tag_keywords', true),
-            ]
+            ],
+            'flag' => [
+                'create' => get_term_meta($tag->term_id, '_cosmy_seo_tag', true)
+                'tagger' => get_term_meta($tag->term_id, '_cosmy_seo_tag_tagger', true),
+                'excerpt' => get_term_meta($tag->term_id, '_cosmy_seo_tag_excerpt', true),
+            ],
         ];
     }
-	return $result;
+    $total = get_terms([
+        'taxonomy'   => 'post_tag',
+        'hide_empty' => false,
+        'fields'     => 'count',
+    ]);
+    return [
+        'page' => $page,
+        'limit' => $limit,
+        'total' => (int) $total,
+        'tags' => $result,
+    ];
 }
 
 //POST /tags
@@ -484,9 +509,11 @@ function cosmy_post_tags(WP_REST_Request $request) {
     }
     if (!empty($excerpt)){
         update_term_meta($id, 'cosmy_tag_excerpt', $excerpt);
+        update_term_meta($id, '_cosmy_seo_tag_excerpt', current_time('mysql'));
     }
 	if (!empty($keywords)){
         update_term_meta($id, 'cosmy_tag_keywords', $keywords);
+        update_term_meta($id, '_cosmy_seo_tag_tagger', current_time('mysql'));
     }
     return ['success' => true, 'id' => $id];
 }
@@ -576,6 +603,7 @@ function cosmy_post_prod(WP_REST_Request $request) {
     ];
 
     $result = wp_update_post($update, true);
+    update_post_meta($post_id, '_cosmy_seo_prod_excerpt', current_time('mysql'));
     if (is_wp_error($result)) return $result;
 
     $keywords = $data['keyword'] ?? '';
@@ -584,14 +612,14 @@ function cosmy_post_prod(WP_REST_Request $request) {
     }
     if (isset($data['keyword'])) {
         update_post_meta($post_id, 'cosmy_prod_keyword', sanitize_text_field($keywords));
-
+        update_post_meta($post_id, '_cosmy_seo_prod_tagger', current_time('mysql'));
         $tags = array_filter(array_map('trim', explode(',', $keywords)));
 
         if (!empty($tags)) {
             wp_set_object_terms($post_id, $tags, 'product_tag', false);
         }
     }
-    update_post_meta($post_id, '_cosmy_seo_prod', current_time('mysql'));
+    
     return [
         'success' => true,
         'id' => $post_id,
@@ -640,6 +668,10 @@ function cosmy_get_prod(WP_REST_Request $request) {
             'excerpt'     => $post->post_excerpt,
             'categories'  => $cat_string,
             'keyword'     => $keyword,
+            'flag' => [
+                'tagger' => get_term_meta($post->ID, '_cosmy_seo_prod_tagger', true),
+                'excerpt' => get_term_meta($post->ID, '_cosmy_seo_prod_excerpt', true),
+            ],
         ];
     }
 
