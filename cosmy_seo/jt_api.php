@@ -567,24 +567,81 @@ function cosmy_force_update_api(WP_REST_Request $request) {
 function cosmy_tags_to_link(WP_REST_Request $request) {
     $params = $request->get_json_params();
     $tags = $params['tags'] ?? [];
+
     if (!is_array($tags)) {
         $tags = [$tags];
     }
 
+    $taxonomy = 'post_tag';
+    $results = [];
+
     foreach ($tags as $tag_name) {
         $tag_name = trim($tag_name);
-        if (empty($tag_name)) {
+        if ($tag_name === '') {
             continue;
         }
-        $term = get_term_by('name', $tag_name, 'post_tag');
-        if (!$term) {
-            wp_insert_term($tag_name, 'post_tag');
+
+        // Собираем все термы, схожие по имени (без учета регистра)
+        $all_terms = get_terms([
+            'taxonomy' => $taxonomy,
+            'hide_empty' => false,
+            'name__like' => $tag_name,
+        ]);
+
+        // Фильтруем только те, у которых имя совпадает без регистра
+        $same_terms = array_filter($all_terms, fn($term) => mb_strtolower($term->name) === mb_strtolower($tag_name));
+
+        $target_term = null;
+
+        if (!empty($same_terms)) {
+            // Определяем “правильный” вариант (тот, что точно совпадает по регистру)
+            foreach ($same_terms as $term) {
+                if ($term->name === $tag_name) {
+                    $target_term = $term;
+                    break;
+                }
+            }
+
+            // Если точного совпадения нет — выбираем самый популярный
+            if (!$target_term) {
+                usort($same_terms, fn($a, $b) => $b->count <=> $a->count);
+                $target_term = $same_terms[0];
+                // Переименовываем в нужный регистр
+                wp_update_term($target_term->term_id, $taxonomy, ['name' => $tag_name]);
+            }
+
+            // Переносим все посты с дублей к правильному тегу
+            foreach ($same_terms as $term) {
+                if ($term->term_id === $target_term->term_id) continue;
+
+                // Удаляем дубль, если у него нет статей
+                $term_data = get_term($term->term_id, $taxonomy);
+                if (empty($term_data->count)) {
+                    wp_delete_term($term->term_id, $taxonomy);
+                }
+            }
+        } else {
+            // Если ничего нет — создаем новый тег
+            $inserted = wp_insert_term($tag_name, $taxonomy);
+            if (!is_wp_error($inserted)) {
+                $target_term = get_term($inserted['term_id'], $taxonomy);
+            }
         }
+
+        $results[] = [
+            'name' => $tag_name,
+            'term_id' => $target_term ? $target_term->term_id : null,
+        ];
     }
 
-    update_site_option('cosmy_tags', $tags);
-    return ['success' => true, 'tags' => $tags];
+    update_site_option('cosmy_tags', array_column($results, 'name'));
+
+    return [
+        'success' => true,
+        'tags' => $results,
+    ];
 }
+
 //POST /prod
 function cosmy_post_prod(WP_REST_Request $request) {
     $data = $request->get_json_params();
