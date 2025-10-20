@@ -381,10 +381,8 @@ function cosmy_upload_image(WP_REST_Request $request) {
 }
 //GET /tags
 function cosmy_get_tags(WP_REST_Request $request) {
-    $limit = (int) $request->get_param('limit') ?: 10;
-    $page  = (int) $request->get_param('page') ?: 1;
-    $offset = ($page - 1) * $limit;
-    $top    = $request->get_param('top');
+    $page    = max((int) $request->get_param('page'), 1);
+    $limit   = $request->has_param('page') ? 100 : ((int) $request->get_param('limit') ?: 10);
     $settings = get_site_option('cosmy_tags');
 
     $cat_ids = $request->get_param('cats');
@@ -392,18 +390,14 @@ function cosmy_get_tags(WP_REST_Request $request) {
         $cat_ids = explode(',', $cat_ids);
     }
 
-    $args = [
+    $args_base = [
         'taxonomy'   => 'post_tag',
         'hide_empty' => false,
-        'number'     => $limit,
-        'offset'     => $offset,
         'orderby'    => 'count',
         'order'      => 'DESC',
     ];
-    if ($page > 1) {
-        $args['number'] = 100;
-        $args['offset'] = ($page - 1) * 100;
-    }
+
+    // 🔹 Фильтрация по категориям
     if (!empty($cat_ids)) {
         $posts = get_posts([
             'post_type'      => 'post',
@@ -412,30 +406,78 @@ function cosmy_get_tags(WP_REST_Request $request) {
             'category__in'   => $cat_ids,
         ]);
 
-        if ($posts) {
-            $term_ids = wp_get_object_terms($posts, 'post_tag', ['fields' => 'ids']);
-            if (!is_wp_error($term_ids) && !empty($term_ids)) {
-                $args['include'] = $term_ids;
-            } else {
-                return []; // если тегов не найдено
-            }
-        } else {
-            return []; // если постов в категориях нет
+        if (empty($posts)) {
+            return [
+                'page'  => $page,
+                'limit' => $limit,
+                'total' => 0,
+                'tags'  => [],
+            ];
         }
+
+        $term_ids = wp_get_object_terms($posts, 'post_tag', ['fields' => 'ids']);
+        if (is_wp_error($term_ids) || empty($term_ids)) {
+            return [
+                'page'  => $page,
+                'limit' => $limit,
+                'total' => 0,
+                'tags'  => [],
+            ];
+        }
+
+        $args_base['include'] = $term_ids;
     }
-    
-      // Если top=false, то включаем теги из настроек
-    if ($top === 'false' || $top === false) {
-        if (!empty($settings)) {
-            $args['name'] = $settings;
+
+    $selected_tags = [];
+
+    // 🔹 1. Берём теги из настроек постранично
+    if (!empty($settings)) {
+        $offset = ($page - 1) * $limit;
+        $settings_page = array_slice($settings, $offset, $limit); // часть для текущей страницы
+
+        if (!empty($settings_page)) {
+            $args_settings = array_merge($args_base, [
+                'name' => $settings_page,
+            ]);
+            $selected_tags = get_terms($args_settings);
+            if (is_wp_error($selected_tags)) {
+                $selected_tags = [];
+            }
         }
     }
 
-    $tags = get_terms($args);
+    $selected_count = count($selected_tags);
+
+    // 🔹 2. Добор популярных, если не хватает тегов на странице
+    if ($selected_count < $limit) {
+        $exclude_ids = wp_list_pluck($selected_tags, 'term_id');
+
+        $shown_tags = [];
+        if (!empty($settings)) {
+            $shown_tags = array_slice($settings, 0, ($page - 1) * $limit);
+        }
+
+        $args_popular = array_merge($args_base, [
+            'number'  => $limit - $selected_count,
+            'offset'  => max(0, ($page - 1) * $limit - count($shown_tags)),
+            'exclude' => $exclude_ids,
+        ]);
+
+        $popular_tags = get_terms($args_popular);
+        if (!is_wp_error($popular_tags) && !empty($popular_tags)) {
+            $existing_slugs = array_column($selected_tags, 'slug');
+            foreach ($popular_tags as $tag) {
+                if (!in_array($tag->slug, $existing_slugs)) {
+                    $selected_tags[] = $tag;
+                }
+            }
+        }
+    }
+
+    // 🔹 3. Формируем ответ
     $result = [];
-	
-    foreach ($tags as $tag) {
-		$result[] = [
+    foreach ($selected_tags as $tag) {
+        $result[] = [
             'id'          => $tag->term_id,
             'name'        => $tag->name,
             'slug'        => $tag->slug,
@@ -443,26 +485,28 @@ function cosmy_get_tags(WP_REST_Request $request) {
             'link'        => get_tag_link($tag->term_id),
             'description' => $tag->description,
             'meta'        => [
-                'cosmy_tag_excerpt' => get_term_meta($tag->term_id, 'cosmy_tag_excerpt', true),
+                'cosmy_tag_excerpt'  => get_term_meta($tag->term_id, 'cosmy_tag_excerpt', true),
                 'cosmy_tag_keywords' => get_term_meta($tag->term_id, 'cosmy_tag_keywords', true),
             ],
             'flag' => [
-                'create' => get_term_meta($tag->term_id, '_cosmy_seo_tag', true),
-                'tagger' => get_term_meta($tag->term_id, '_cosmy_seo_tag_tagger', true),
+                'create'  => get_term_meta($tag->term_id, '_cosmy_seo_tag', true),
+                'tagger'  => get_term_meta($tag->term_id, '_cosmy_seo_tag_tagger', true),
                 'excerpt' => get_term_meta($tag->term_id, '_cosmy_seo_tag_excerpt', true),
             ],
         ];
     }
-    $total = get_terms([
-        'taxonomy'   => 'post_tag',
-        'hide_empty' => false,
-        'fields'     => 'count',
-    ]);
+
+    // 🔹 4. Общее количество тегов
+    $total = wp_count_terms('post_tag', ['hide_empty' => false]);
+    if (is_wp_error($total)) {
+        $total = 0;
+    }
+
     return [
-        'page' => $page,
+        'page'  => $page,
         'limit' => $limit,
         'total' => (int) $total,
-        'tags' => $result,
+        'tags'  => $result,
     ];
 }
 
@@ -613,7 +657,17 @@ function cosmy_tags_to_link(WP_REST_Request $request) {
             // Переносим все посты с дублей к правильному тегу
             foreach ($same_terms as $term) {
                 if ($term->term_id === $target_term->term_id) continue;
+                  // Получаем все посты с этим дублем
+                $posts = get_objects_in_term($term->term_id, $taxonomy);
 
+
+                // Получаем все посты с этим дублем
+                if (!empty($posts)) {
+                    foreach ($posts as $post_id) {
+                        wp_remove_object_terms($post_id, (int) $term->term_id, $taxonomy);
+                        wp_add_object_terms($post_id, (int) $target_term->term_id, $taxonomy);
+                    }
+                }
                 // Удаляем дубль, если у него нет статей
                 $term_data = get_term($term->term_id, $taxonomy);
                 if (empty($term_data->count)) {

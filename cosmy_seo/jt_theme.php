@@ -240,6 +240,22 @@ function cosmy_tag_related_keywords_html( $term_id ) {
   $links_arr = [];
   foreach ($keywords as $data) {
     $term = get_term_by('name', $data, 'post_tag');
+    if (!$term) {
+      $term_lower = strtolower($data);
+      $all_terms = get_terms([
+        'taxonomy'   => 'post_tag',
+        'hide_empty' => false,
+        'fields'     => 'all',
+      ]);
+
+      foreach ($all_terms as $t) {
+        if (strtolower($t->name) === $term_lower) {
+          $term = $t;
+          break;
+        }
+      }
+    }
+    if (!$term) continue;
     $href = get_term_link( $term );
     if ( is_wp_error( $href ) ) { continue; }
     $links_arr[] = sprintf(
