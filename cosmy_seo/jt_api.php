@@ -791,13 +791,10 @@ function cosmy_get_prod(WP_REST_Request $request) {
     if (empty($posts)) {
         return [];
     }
-    $published = array_filter($query->posts, function($p) {
-        return $p->post_status === 'publish';
-    });
-
+   
     $items = [];
 
-    foreach ($published as $post) {
+    foreach ($posts as $post) {
         $keyword = get_post_meta($post->ID, 'cosmy_prod_keyword', true);
 
         // Получаем категории (ID)
@@ -826,6 +823,10 @@ function cosmy_get_prod(WP_REST_Request $request) {
                 'tagger' => get_post_meta($post->ID, '_cosmy_seo_prod_tagger', true),
                 'excerpt' => get_post_meta($post->ID, '_cosmy_seo_prod_excerpt', true),
             ],
+			'counter' => [
+				'status' => get_post_meta($post->ID, '_stock_status', true),
+			],
+			'raw' => $post
         ];
     }
 
