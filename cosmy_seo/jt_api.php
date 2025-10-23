@@ -164,8 +164,31 @@ function cosmy_site_info(WP_REST_Request $request) {
 
     $info['categories'] = $cats;
 
+    if (taxonomy_exists('product_cat')) {
+        $product_cats = get_terms([
+            'taxonomy'   => 'product_cat',
+            'hide_empty' => true,
+            'fields'     => 'id=>name',
+        ]);
+
+        $prod_cats = [];
+        foreach ($product_cats as $cat_id => $cat_name) {
+            $cat = get_term($cat_id, 'product_cat');
+            $prod_cats[] = [
+                'id'    => $cat->term_id,
+                'name'  => $cat->name,
+                'slug'  => $cat->slug,
+                'count' => $cat->count,
+                'link'  => get_term_link($cat_id, 'product_cat'),
+            ];
+        }
+
+        $info['product_categories'] = $prod_cats;
+    } else {
+        $info['product_categories'] = [];
+    }
     // 🕓 Кэшируем на день (или сколько нужно)
-    set_transient($cache_key, $info, 24 * 60 * MINUTE_IN_SECONDS);
+    set_transient($cache_key, $info, 2 * 60 * MINUTE_IN_SECONDS);
 
     return $info;
 }
@@ -737,18 +760,38 @@ function cosmy_post_prod(WP_REST_Request $request) {
 }
 //GET /prod
 function cosmy_get_prod(WP_REST_Request $request) {
-    $limit = max(1, intval($request->get_param('limit') ?? 10));
+    $limit = intval($request->get_param('limit') ?? 10);
+    $cat_ids = $request->get_param('cats');
 
-   $query = new WP_Query([
+     if (!is_array($cat_ids)) {
+        $cat_ids = [];
+    }
+    $cat_ids = array_filter(array_map('intval', $cat_ids));
+
+    // Базовый массив аргументов запроса
+    $query_args = [
         'post_type'      => 'product',
         'post_status'    => 'publish',
         'posts_per_page' => $limit,
         'no_found_rows'  => true,
-    ]);
+    ];
+
+    if (!empty($cat_ids)) {
+        $query_args['tax_query'] = [[
+            'taxonomy' => 'product_cat',
+            'field'    => 'term_id',
+            'terms'    => $cat_ids,
+            'operator' => 'IN',
+        ]];
+    }
+
+    $query = new WP_Query($query_args);
     $posts = $query->posts;
+
     if (empty($posts)) {
         return [];
     }
+
 
     $items = [];
 
