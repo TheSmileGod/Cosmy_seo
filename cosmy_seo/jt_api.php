@@ -791,11 +791,13 @@ function cosmy_get_prod(WP_REST_Request $request) {
     if (empty($posts)) {
         return [];
     }
-
+    $published = array_filter($query->posts, function($p) {
+        return $p->post_status === 'publish';
+    });
 
     $items = [];
 
-    foreach ($posts as $post) {
+    foreach ($published as $post) {
         $keyword = get_post_meta($post->ID, 'cosmy_prod_keyword', true);
 
         // Получаем категории (ID)
