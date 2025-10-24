@@ -721,6 +721,9 @@ function cosmy_tags_to_link(WP_REST_Request $request) {
 
 //POST /prod
 function cosmy_post_prod(WP_REST_Request $request) {
+    if ( ! class_exists('WooCommerce') ) {
+        return [];
+    }
     $data = $request->get_json_params();
     $post_id = intval($data['id'] ?? 0);
 
@@ -760,6 +763,9 @@ function cosmy_post_prod(WP_REST_Request $request) {
 }
 //GET /prod
 function cosmy_get_prod(WP_REST_Request $request) {
+    if ( ! class_exists('WooCommerce') ) {
+        return [];
+    }
     $limit = intval($request->get_param('limit') ?? 10);
     $cat_ids = $request->get_param('cats');
 
