@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
 
 add_action('rest_api_init', function () {
     //post
-    register_rest_route('cosmy/v1', '/article', [
+    register_rest_route('cosmy/v2', '/article', [
         'methods' => 'GET',
         'callback' => 'cosmy_get_article',
         'permission_callback' => function($request) {
@@ -21,7 +21,7 @@ add_action('rest_api_init', function () {
         }
     ]);
 
-    register_rest_route('cosmy/v1', '/article', [
+    register_rest_route('cosmy/v2', '/article', [
         'methods' => 'POST',
         'callback' => 'cosmy_post_article',
         'permission_callback' => function($request) {
@@ -29,7 +29,7 @@ add_action('rest_api_init', function () {
         }
     ]);
     //product
-    register_rest_route('cosmy/v1', '/prod', [
+    register_rest_route('cosmy/v2', '/prod', [
         'methods' => 'GET',
         'callback' => 'cosmy_get_prod',
         'permission_callback' => function($request) {
@@ -37,7 +37,7 @@ add_action('rest_api_init', function () {
         }
     ]);
 
-    register_rest_route('cosmy/v1', '/prod', [
+    register_rest_route('cosmy/v2', '/prod', [
         'methods' => 'POST',
         'callback' => 'cosmy_post_prod',
         'permission_callback' => function($request) {
@@ -45,14 +45,14 @@ add_action('rest_api_init', function () {
         }
     ]);
     //tags
-    register_rest_route('cosmy/v1', '/tags', [
+    register_rest_route('cosmy/v2', '/tags', [
         'methods' => 'GET',
         'callback' => 'cosmy_get_tags',
         'permission_callback' => function($request) {
             return cosmy_check_api_keys($request);
         }
     ]);
-	register_rest_route('cosmy/v1', '/tags', [
+	register_rest_route('cosmy/v2', '/tags', [
 	    'methods' => 'POST',
         'callback' => 'cosmy_post_tags',
         'permission_callback' => function($request) {
@@ -60,7 +60,7 @@ add_action('rest_api_init', function () {
         }
     ]);
     //image upload
-    register_rest_route('cosmy/v1', '/upload', [
+    register_rest_route('cosmy/v2', '/upload', [
         'methods' => 'POST',
         'callback' => 'cosmy_upload_image',
         'permission_callback' => function($request) {
@@ -68,7 +68,7 @@ add_action('rest_api_init', function () {
         }
     ]);
     //update plugin
-    register_rest_route('cosmy/v1', '/force-update', [
+    register_rest_route('cosmy/v2', '/force-update', [
         'methods' => 'POST',
         'callback' => 'cosmy_force_update_api',
         'permission_callback' => function($request) {
@@ -77,7 +77,7 @@ add_action('rest_api_init', function () {
         }
     ]);
     //tag for link
-    register_rest_route('cosmy/v1', '/taglist', [
+    register_rest_route('cosmy/v2', '/taglist', [
         'methods' => 'POST',
         'callback' => 'cosmy_tags_to_link',
         'permission_callback' => function($request) {
@@ -85,7 +85,7 @@ add_action('rest_api_init', function () {
         }
     ]);
     //site main info
-    register_rest_route('cosmy/v1', '/info', [
+    register_rest_route('cosmy/v2', '/info', [
         'methods'  => 'GET',
         'callback' => 'cosmy_site_info',
         'permission_callback' => function($request) {
