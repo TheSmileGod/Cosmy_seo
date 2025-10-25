@@ -310,7 +310,7 @@ function cosmy_post_article(WP_REST_Request $request) {
         update_post_meta($post_id, '_cosmy_seo_post' . $flag, current_time('mysql'));
         $action = 'updated';
     } else {
-		if ( !function_exists( 'parse_blocks' ) ) {
+		if (!function_exists('parse_blocks')) {
 			require_once(ABSPATH . 'wp-includes/blocks.php');
 		}
 		if (function_exists('parse_blocks')) {

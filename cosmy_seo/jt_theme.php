@@ -257,7 +257,7 @@ function cosmy_tag_related_keywords_html( $term_id ) {
     }
     if (!$term) continue;
     $href = get_term_link( $term );
-    if ( is_wp_error( $href ) ) { continue; }
+    if ( is_wp_error($href) ) { continue; }
     $links_arr[] = sprintf(
       '<a href="%s" rel="tag" class="tag-link %s"><span class="tag-hash">#</span>%s</a>',
       esc_url($href),
@@ -271,14 +271,14 @@ function cosmy_tag_related_keywords_html( $term_id ) {
 }
 
 function cosmy_append_keywords_to_tag_description( $desc ) {
-    if ( ! is_tag() ) return $desc;
+    if ( !is_tag() ) return $desc;
 
     $term = get_queried_object();
-    if ( ! $term || empty( $term->term_id ) ) return $desc;
+    if ( !$term || empty($term->term_id) ) return $desc;
 
     if (empty($term->description)) return $desc;
 
-    $keywords_html = cosmy_tag_related_keywords_html( (int) $term->term_id );
+    $keywords_html = cosmy_tag_related_keywords_html((int)$term->term_id);
 
     return $desc . $keywords_html;
 }
@@ -343,3 +343,11 @@ function cosmy_get_category_chain($term_id) {
     $cache[$term_id] = $chain;
     return $chain;
 }
+
+add_filter('sanitize_title', function ($title, $raw_title = '', $context = 'display') {
+    $title = remove_accents($title);
+    $title = strtolower($title);
+    $title = preg_replace('/[^a-z0-9\-]+/', '-', $title);
+    $title = trim($title, '-');
+    return $title;
+}, 10, 3);
