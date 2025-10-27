@@ -353,11 +353,33 @@ add_filter('sanitize_title', function ($title, $raw_title = '', $context = 'disp
   return $title;
 }, 10, 3);
 
-function normalize_dashes_and_quotes($text) {
+function normalize_dashes_and_quotes(string $text): string {
     $replacements = [
-        '–' => '-', '—' => '-', '-' => '-', // тире/дефисы
-        '“' => '"', '”' => '"', '„' => '"', '«' => '"', '»' => '"', // кавычки
-        '’' => "'", '‘' => "'", '´' => "'", // апострофы
+        // --- Все возможные виды дефисов и тире ---
+        "\u{002D}" => '-', // hyphen-minus
+        "\u{00AD}" => '-', // soft hyphen
+        "\u{2010}" => '-', // hyphen
+        "\u{2011}" => '-', // non-breaking hyphen ← вот он!
+        "\u{2012}" => '-', // figure dash
+        "\u{2013}" => '-', // en dash
+        "\u{2014}" => '-', // em dash
+        "\u{2015}" => '-', // horizontal bar
+        "\u{2212}" => '-', // minus sign
+
+        // --- Кавычки двойные ---
+        "\u{00AB}" => '"', // «
+        "\u{00BB}" => '"', // »
+        "\u{201C}" => '"', // “
+        "\u{201D}" => '"', // ”
+        "\u{201E}" => '"', // „
+
+        // --- Кавычки одинарные / апострофы ---
+        "\u{2018}" => "'", // ‘
+        "\u{2019}" => "'", // ’
+        "\u{201A}" => "'", // ‚
+        "\u{FF07}" => "'", // fullwidth apostrophe
+        "\u{00B4}" => "'", // ´
     ];
+
     return strtr($text, $replacements);
 }
