@@ -345,9 +345,19 @@ function cosmy_get_category_chain($term_id) {
 }
 
 add_filter('sanitize_title', function ($title, $raw_title = '', $context = 'display') {
-    $title = remove_accents($title);
-    $title = strtolower($title);
-    $title = preg_replace('/[^a-z0-9\-]+/', '-', $title);
-    $title = trim($title, '-');
-    return $title;
+  $title = normalize_dashes_and_quotes($title);  
+  $title = remove_accents($title);
+  $title = strtolower($title);
+  $title = preg_replace('/[^a-z0-9\-]+/', '-', $title);
+  $title = trim($title, '-');
+  return $title;
 }, 10, 3);
+
+function normalize_dashes_and_quotes($text) {
+    $replacements = [
+        '–' => '-', '—' => '-', '-' => '-', // тире/дефисы
+        '“' => '"', '”' => '"', '„' => '"', '«' => '"', '»' => '"', // кавычки
+        '’' => "'", '‘' => "'", '´' => "'", // апострофы
+    ];
+    return strtr($text, $replacements);
+}
