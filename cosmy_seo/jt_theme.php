@@ -344,26 +344,21 @@ function cosmy_get_category_chain($term_id) {
     return $chain;
 }
 
+
 add_filter('sanitize_title', function ($title, $raw_title = '', $context = 'display') {
-  $title = normalize_dashes_and_quotes($title);  
-  $title = remove_accents($title);
-  $title = strtolower($title);
-  $title = preg_replace('/[^a-z0-9\-]+/', '-', $title);
-  $title = trim($title, '-');
-  return $title;
-}, 10, 3);
+    $title = strtr($title, [
+        '«' => '"', '»' => '"', '“' => '"', '”' => '"', '„' => '"',
+        '‘' => "'", '’' => "'", '‚' => "'", '´' => "'",
+    ]);
 
-function normalize_dashes_and_quotes(string $text): string {
-  $text = preg_replace('/[\x{00AD}\x{2010}-\x{2015}\x{2212}\x{FE58}\x{FE63}\x{FF0D}]/u', '-', $text);
+    $title = remove_accents($title);
+	  $title = strtolower($title);
+	  $title = preg_replace('/[^a-z0-9\-]+/', '-', $title);
+   	$title = trim($title, '-');
+	  $title = preg_replace('/(?:[a-f0-9]{2}[\-\s]?){2,}/i', '', $title);
+    $title = preg_replace('/(?:e2[\-\s]?80[\-\s]?(?:9[0-5]|90)|e2809[0-5])/i', '', $title);
+	  $title = preg_replace('/-+/', '-', $title);
+    $title = trim($title, '-');
 
-  $text = preg_replace('/\xE2\x80\x91/', '-', $text);
-
-  $text = preg_replace('/e2[\-\s]?80[\-\s]?(90|91|92|93|94|95)/i', '-', $text);
-
-  $text = strtr($text, [
-    '«' => '"', '»' => '"', '“' => '"', '”' => '"', '„' => '"',
-    '‘' => "'", '’' => "'", '‚' => "'", '´' => "'",
-  ]);
-
-  return $text;
-}
+  	return $title;
+}, 10, 99);
