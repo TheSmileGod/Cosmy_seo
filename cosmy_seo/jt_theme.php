@@ -343,10 +343,18 @@ function cosmy_get_category_chain($term_id) {
     $cache[$term_id] = $chain;
     return $chain;
 }
+add_action('save_post', function () {
+    add_filter('sanitize_title', 'csp_clean_slug', 99, 1);
+}, 5);
 
+// Убираем фильтр сразу после сохранения
+add_action('save_post', function () {
+    remove_filter('sanitize_title', 'csp_clean_slug', 99);
+}, 99);
 
-add_filter('sanitize_title', function ($title, $raw_title = '', $context = 'display') {
-    $title = strtr($title, [
+function csp_clean_slug($title) {
+    
+	$title = strtr($title, [
         '«' => '"', '»' => '"', '“' => '"', '”' => '"', '„' => '"',
         '‘' => "'", '’' => "'", '‚' => "'", '´' => "'",
     ]);
@@ -361,4 +369,4 @@ add_filter('sanitize_title', function ($title, $raw_title = '', $context = 'disp
     $title = trim($title, '-');
 
   	return $title;
-}, 10, 99);
+};
