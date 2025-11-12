@@ -147,18 +147,17 @@ function cosmy_site_info(WP_REST_Request $request) {
     $categories = get_terms([
         'taxonomy'   => 'category',
         'hide_empty' => true,
-        'fields'     => 'id=>name', // ускоряет выборку
     ]);
 
     $cats = [];
-    foreach ($categories as $cat_id => $cat_name) {
-        $cat = get_term($cat_id);
+    foreach ($categories as $cat) {
         $cats[] = [
             'id'    => $cat->term_id,
             'name'  => $cat->name,
+            'excerpt' => $cat->description ?: '',
             'slug'  => $cat->slug,
             'count' => $cat->count,
-            'link'  => get_category_link($cat_id),
+            'link'  => get_category_link($cat->term_id),
         ];
     }
 
@@ -168,18 +167,17 @@ function cosmy_site_info(WP_REST_Request $request) {
         $product_cats = get_terms([
             'taxonomy'   => 'product_cat',
             'hide_empty' => true,
-            'fields'     => 'id=>name',
         ]);
 
         $prod_cats = [];
-        foreach ($product_cats as $cat_id => $cat_name) {
-            $cat = get_term($cat_id, 'product_cat');
+        foreach ($product_cats as $cat) {
             $prod_cats[] = [
                 'id'    => $cat->term_id,
                 'name'  => $cat->name,
+                'excerpt' => $cat->description ?: '',
                 'slug'  => $cat->slug,
                 'count' => $cat->count,
-                'link'  => get_term_link($cat_id, 'product_cat'),
+                'link'  => get_term_link($cat->term_id, 'product_cat'),
             ];
         }
 
@@ -236,6 +234,9 @@ function cosmy_get_article(WP_REST_Request $request) {
         if ($fields === 'ids') {
             $posts[] = $post->ID;
         } else {
+            $thumb_id = get_post_thumbnail_id($post->ID);
+            $thumb_url = $thumb_id ? wp_get_attachment_image_url($thumb_id, 'full') : '';
+
             $posts[] = [
                 'id' => $post->ID,
                 'title' => $post->post_title,
@@ -244,6 +245,7 @@ function cosmy_get_article(WP_REST_Request $request) {
                 'author' => $post->post_author,
 				'excerpt' => $post->post_excerpt,
 				'url' => get_permalink($post->ID),
+                'url_image' => $thumb_url,
                 'tags' => wp_get_post_tags($post->ID, ['fields' => 'names']),
                 'flag' => [
                     'create' => get_post_meta($post->ID, '_cosmy_seo_post', true),
@@ -817,7 +819,12 @@ function cosmy_get_prod(WP_REST_Request $request) {
         // 📁 превращаем цепочку в строку через /
         $cat_string = implode(' / ', array_map(fn($c) => $c['name'], $longest_chain));
 
-        
+        $thumb_id = get_post_thumbnail_id($post->ID);
+        $thumb_url = $thumb_id ? wp_get_attachment_image_url($thumb_id, 'full') : '';
+
+        // 🔗 Ссылка на сам продукт
+        $permalink = get_permalink($post->ID);
+
         $items[] = [
             'id'          => $post->ID,
             'title'       => $post->post_title,
@@ -832,6 +839,9 @@ function cosmy_get_prod(WP_REST_Request $request) {
 			'counter' => [
 				'status' => get_post_meta($post->ID, '_stock_status', true),
 			],
+            'date' => $post->post_date,
+            'url_image' => $thumb_url,
+            'url'       => $permalink,
 			'raw' => $post
         ];
     }
