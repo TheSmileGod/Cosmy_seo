@@ -158,6 +158,7 @@ function cosmy_site_info(WP_REST_Request $request) {
             'slug'  => $cat->slug,
             'count' => $cat->count,
             'link'  => get_category_link($cat->term_id),
+            'parent'   => $cat->parent,
         ];
     }
 
@@ -177,6 +178,7 @@ function cosmy_site_info(WP_REST_Request $request) {
                 'excerpt' => $cat->description ?: '',
                 'slug'  => $cat->slug,
                 'count' => $cat->count,
+                'parent'   => $cat->parent,
                 'link'  => get_term_link($cat->term_id, 'product_cat'),
             ];
         }
