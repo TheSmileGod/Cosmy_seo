@@ -382,7 +382,7 @@ function cosmy_upload_image(WP_REST_Request $request) {
 		$alt         = sanitize_text_field($request->get_param('alt'));
         $title       = sanitize_text_field($request->get_param('title'));
         $orig_name   = sanitize_file_name($request->get_param('filename'));
-		$description = sanitize_file_name($request->get_param('description'));
+		$description = sanitize_text_field($request->get_param('description') ?? '');
         if (empty($title)) {
             $title = pathinfo($orig_name ?: $filename, PATHINFO_FILENAME);
         }
@@ -395,7 +395,6 @@ function cosmy_upload_image(WP_REST_Request $request) {
         ];
         $attach_id = wp_insert_attachment($attachment, $filename);
         if (!is_wp_error($attach_id)) {
-            require_once(ABSPATH . 'wp-admin/includes/image.php');
             $attach_data = wp_generate_attachment_metadata($attach_id, $filename);
             wp_update_attachment_metadata($attach_id, $attach_data);
 		   	if (!empty($alt)) {
@@ -409,7 +408,7 @@ function cosmy_upload_image(WP_REST_Request $request) {
 //GET /tags
 function cosmy_get_tags(WP_REST_Request $request) {
     $page    = max((int) $request->get_param('page'), 1);
-    $limit   = $request->has_param('page') ? 100 : ((int) $request->get_param('limit') ?: 10);
+    $limit   = $request->has_param('page') ? 100 : (int)$request->get_param('limit', 10);
     $settings = get_site_option('cosmy_tags');
 
     $cat_ids = $request->get_param('cats');
@@ -660,7 +659,15 @@ function cosmy_tags_to_link(WP_REST_Request $request) {
         ]);
 
         // Фильтруем только те, у которых имя совпадает без регистра
-        $same_terms = array_filter($all_terms, fn($term) => mb_strtolower($term->name) === mb_strtolower($tag_name));
+        $same_terms = [];
+
+        $tag_lower = mb_strtolower($tag_name);
+
+        foreach ($all_terms as $term) {
+            if (mb_strtolower($term->name) === $tag_lower) {
+                $same_terms[] = $term;
+            }
+        }
 
         $target_term = null;
 
