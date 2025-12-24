@@ -4,7 +4,7 @@
 Plugin Name: COSMY SEO
 Text Domain: cosmy-seo
 Description: COSMY Site — SEO module via REST API.
-Version: 2.3.6
+Version: 2.3.7
 Author: COSMY Site 
 Author URI: https://cosmy.site
 Update URI: https://github.com/TheSmileGod/Cosmy_seo
@@ -71,3 +71,11 @@ register_activation_hook(__FILE__, function() {
 include_once 'jt_theme.php';
 include_once 'jt_admin.php';
 include_once 'jt_api.php';
+
+register_activation_hook(__FILE__, 'cosmy_seo_activate');
+
+function cosmy_seo_activate() {
+    cosmy_seo_get_secret();
+    cosmy_seo_create_user();
+}
+

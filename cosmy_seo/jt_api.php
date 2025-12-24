@@ -291,12 +291,13 @@ function cosmy_post_article(WP_REST_Request $request) {
     if (!$title && !$id) {
         return new WP_Error('missing_title', 'Заголовок обязателен', ['status' => 400]);
     }
-		
+	$flag = '';
+    $timeFlag = current_time('mysql');
 	if ($id > 0 && get_post($id)) {
 		$post_data = [
 			'ID' => $id
 		];
-		$flag = '';
+		
 		if (isset($params['status'])) {
 			$post_data['post_status'] = $status;
 		}
@@ -311,7 +312,7 @@ function cosmy_post_article(WP_REST_Request $request) {
             $flag = '_tagger';
 		}
         $post_id = wp_update_post($post_data, true);
-        update_post_meta($post_id, '_cosmy_seo_post' . $flag, current_time('mysql'));
+        update_post_meta($post_id, '_cosmy_seo_post' . $flag, $timeFlag);
         $action = 'updated';
     } else {
 		if (!function_exists('parse_blocks')) {
@@ -334,6 +335,7 @@ function cosmy_post_article(WP_REST_Request $request) {
 			'post_category' => [$default_category_id],
     	];
         $post_id = wp_insert_post($post_data, true);
+        update_post_meta($post_id, '_cosmy_seo_post' . $flag, $timeFlag);
         $action = 'created';
     }
 

