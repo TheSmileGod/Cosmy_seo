@@ -430,3 +430,102 @@ function cosmy_seo_create_user() {
 }
 
 add_filter('pre_update_option_cosmy_seo_secret', '__return_false');
+
+add_filter('wp_kses_allowed_html', function ($allowed, $context) {
+
+    if (
+        $context === 'post' &&
+        !empty($GLOBALS['cosmy_allow_extended_html'])
+    ) {
+        $allowed['iframe'] = [
+            'src' => true,
+            'width' => true,
+            'height' => true,
+            'allow' => true,
+            'allowfullscreen' => true,
+            'frameborder' => true,
+        ];
+
+        $allowed['video'] = [
+            'src' => true,
+            'controls' => true,
+            'autoplay' => true,
+            'muted' => true,
+            'loop' => true,
+            'width' => true,
+            'height' => true,
+        ];
+
+        $allowed['audio'] = [
+            'src' => true,
+            'controls' => true,
+            'autoplay' => true,
+        ];
+
+        $allowed['svg'] = [
+            'xmlns' => true,
+            'viewBox' => true,
+            'width' => true,
+            'height' => true,
+            'fill' => true,
+        ];
+        $allowed['form'] = [
+            'action' => true,
+            'method' => true,
+            'enctype' => true,
+            'target' => true,
+            'accept-charset' => true,
+            'id' => true,
+            'class' => true,
+            'style' => true,
+        ];
+
+        // можно добавить базовые поля input, label, button
+        $allowed['input'] = [
+            'type' => true,
+            'name' => true,
+            'value' => true,
+            'placeholder' => true,
+            'checked' => true,
+            'disabled' => true,
+            'id' => true,
+            'class' => true,
+            'style' => true,
+        ];
+
+        $allowed['label'] = [
+            'for' => true,
+            'id' => true,
+            'class' => true,
+            'style' => true,
+        ];
+
+        $allowed['button'] = [
+            'type' => true,
+            'id' => true,
+            'class' => true,
+            'style' => true,
+        ];
+    }
+
+    return $allowed;
+}, 10, 2);
+
+add_action('rest_pre_dispatch', function ($result, $server, $request) {
+
+    if (strpos($request->get_route(), '/cosmy/') === 0) {
+        $GLOBALS['cosmy_allow_extended_html'] = true;
+    }
+
+    return $result;
+}, 10, 3);
+
+
+add_action('rest_post_dispatch', function ($response, $server, $request) {
+
+    if (strpos($request->get_route(), '/cosmy/') === 0) {
+        $GLOBALS['cosmy_allow_extended_html'] = false;
+    }
+
+    return $response;
+}, 10, 3);
