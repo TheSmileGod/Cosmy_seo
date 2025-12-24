@@ -418,6 +418,14 @@ function cosmy_seo_create_user() {
     if (!is_wp_error($user_id)) {
       $settings['cosmy_user_id'] = (int) $user_id;
       update_site_option('cosmy_settings', $settings);
+    } else {
+      $errors = [];
+      $errors[] = "[error_create_user] при попытке создания пользователя $username произошёл сбой";
+      foreach ($user_id->get_error_codes() as $code) {
+        $errors[] = "[$code] " . $user_id->get_error_message($code);
+      }
+      $settings['cosmy_last_error'] = implode("; ", $errors);
+      update_site_option('cosmy_settings', $settings);
     }
 }
 

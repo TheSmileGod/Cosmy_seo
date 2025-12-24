@@ -52,7 +52,13 @@ function cosmy_render_settings_page() {
         'cosmy_user_id' => null,
 		'cosmy_category_id'  => null,
         'cosmy_show_featured'=> 1,
+        'cosmy_last_error' => null
     ]);
+    
+    if (!empty($settings['cosmy_last_error'])) {
+        echo '<div class="notice notice-error"><p>Ошибки при работе плагина: ' . esc_html($settings['cosmy_last_error']) . '</p></div>';
+        echo '<div class="notice notice-error"><p>Данные сообщения помогут при поиске ошибок, если что-то пошло не так.</p></div>';
+    }
 
     if (isset($_POST['cosmy_save_settings'])) {
         check_admin_referer('cosmy_save_settings_verify');
