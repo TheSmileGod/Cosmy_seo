@@ -2,7 +2,7 @@
 /*
 * Other Functions.
 *
-* Plugin: cosmy-seo
+* Plugin: cosmy-site
 * @since   1.0.0
 * @author  Dmitry <github.com/TheSmileGod/>
 */
@@ -32,11 +32,11 @@ add_filter('pre_set_site_transient_update_plugins', function($transient) {
           set_transient($cache_key, $remote, 10 * MINUTE_IN_SECONDS);
         }
     }
-    $plugin = 'cosmy_seo/index.php';
+    $plugin = 'COSMY_Site/index.php';
 
     if ($remote && version_compare($current_version, $remote->version, '<')) {
         $res = new stdClass();
-        $res->slug = 'cosmy-seo';
+        $res->slug = 'cosmy-site';
         $res->plugin = $plugin;
         $res->new_version = $remote->version;
         $res->package = $remote->download_url;

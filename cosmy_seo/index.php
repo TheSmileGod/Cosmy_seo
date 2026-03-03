@@ -2,7 +2,7 @@
 
 /*
 Plugin Name: COSMY Site
-Text Domain: cosmy-seo
+Text Domain: cosmy-site
 Description: COSMY Site — SEO test module via REST API.
 Version: 2.3.9
 Author: COSMY Site 

@@ -2,7 +2,7 @@
 /*
 * Settings page.
 *
-* Plugin: cosmy-seo
+* Plugin: cosmy-site
 * @since   1.0.0
 * @author  Dmitry <github.com/TheSmileGod/>
 */
@@ -26,7 +26,7 @@ function cosmy_register_settings_page() {
         'Cosmy API Plugin Settings',
         'Cosmy API Plugin',
         'manage_options',
-        'cosmy-seo',
+        'cosmy-site',
         'cosmy_render_settings_page',
         'dashicons-admin-generic',
         99
@@ -35,8 +35,8 @@ function cosmy_register_settings_page() {
 add_action('admin_menu', 'cosmy_register_settings_page');
 
 add_filter('plugin_action_links_cosmy_seo/index.php', function($links) {
-    $settings_url = admin_url('admin.php?page=cosmy-seo');
-    $settings_link = '<a href="' . esc_url($settings_url) . '">' . __('Настройки', 'cosmy-seo') . '</a>';
+    $settings_url = admin_url('admin.php?page=cosmy-site');
+    $settings_link = '<a href="' . esc_url($settings_url) . '">' . __('Настройки', 'cosmy-site') . '</a>';
     array_unshift($links, $settings_link);
     return $links;
 });

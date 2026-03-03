@@ -2,7 +2,7 @@
 /*
 * REST API ENDPOINTS.
 *
-* Plugin: cosmy-seo
+* Plugin: cosmy-site
 * @since   1.0.0
 * @author  Dmitry <github.com/TheSmileGod/>
 */
@@ -591,7 +591,7 @@ function cosmy_force_update_api(WP_REST_Request $request) {
     require_once(ABSPATH . 'wp-admin/includes/file.php');
     require_once(ABSPATH . 'wp-admin/includes/plugin.php');
     //test update and reactivated
-    $plugin_slug = 'cosmy_seo/index.php';
+    $plugin_slug = 'COSMY_Site/index.php';
     $was_active = is_plugin_active($plugin_slug);
 
     delete_site_transient('update_plugins');

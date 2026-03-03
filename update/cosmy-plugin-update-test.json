@@ -1,6 +1,6 @@
 {
-    "version": "2.3.9",
-    "download_url": "https://github.com/TheSmileGod/Cosmy_seo/releases/download/v2.3.9/COSMY_site.zip",
+    "version": "3.0.0",
+    "download_url": "https://github.com/TheSmileGod/Cosmy_seo/releases/download/v3.0.0/COSMY_Site.zip",
     "description": "Тестовый канал обновлений для EX-сайтов.",
     "changelog": "<ul><li>Отдельный update-манифест для тестов</li></ul>"
 }
