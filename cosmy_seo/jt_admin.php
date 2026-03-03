@@ -47,8 +47,7 @@ function cosmy_render_settings_page() {
     }
     
     $settings = get_site_option('cosmy_settings', [
-        'cosmy_public_key' => '',
-        'cosmy_private_key' => '',
+        'cosmy_api_key' => '',
         'cosmy_user_id' => null,
 		'cosmy_category_id'  => null,
         'cosmy_show_featured'=> 1,
@@ -63,15 +62,13 @@ function cosmy_render_settings_page() {
     if (isset($_POST['cosmy_save_settings'])) {
         check_admin_referer('cosmy_save_settings_verify');
 
-        $cosmy_public_key = sanitize_text_field($_POST['cosmy_public_key']);
-        $cosmy_private_key = sanitize_text_field($_POST['cosmy_private_key']);
+        $cosmy_api_key = sanitize_text_field($_POST['cosmy_api_key']);
         $cosmy_user_id = intval($_POST['cosmy_user_id']);
 		$cosmy_category_id = intval($_POST['cosmy_category_id']);
         $cosmy_show_featured = isset($_POST['cosmy_show_featured']) ? 1 : 0;
 
         $settings = [
-            'cosmy_public_key' => $cosmy_public_key,
-            'cosmy_private_key' => $cosmy_private_key,
+            'cosmy_api_key' => $cosmy_api_key,
             'cosmy_user_id' => $cosmy_user_id,
 			'cosmy_category_id' => $cosmy_category_id,
             'cosmy_show_featured'=> $cosmy_show_featured,
@@ -100,12 +97,8 @@ function cosmy_render_settings_page() {
             <?php wp_nonce_field('cosmy_save_settings_verify'); ?>
             <table class="form-table">
                 <tr>
-                    <th><label for="cosmy_public_key">Public API Key</label></th>
-                    <td><input type="text" name="cosmy_public_key" id="cosmy_public_key" value="<?php echo esc_attr($settings['cosmy_public_key']); ?>" class="regular-text"></td>
-                </tr>
-                <tr>
-                    <th><label for="cosmy_private_key">Private API Key</label></th>
-                    <td><input type="text" name="cosmy_private_key" id="cosmy_private_key" value="<?php echo esc_attr($settings['cosmy_private_key']); ?>" class="regular-text"></td>
+                    <th><label for="cosmy_api_key">API Key</label></th>
+                    <td><input type="text" name="cosmy_api_key" id="cosmy_api_key" value="<?php echo esc_attr($settings['cosmy_api_key'] ?? ''); ?>" class="regular-text"></td>
                 </tr>
                 <tr>
                     <th><label for="cosmy_user_id">Выберите пользователя</label></th>

@@ -1,9 +1,9 @@
 <?php
 
 /*
-Plugin Name: COSMY SEO
+Plugin Name: COSMY Site
 Text Domain: cosmy-seo
-Description: COSMY Site — SEO module via REST API.
+Description: COSMY Site — SEO test module via REST API.
 Version: 2.3.9
 Author: COSMY Site 
 Author URI: https://cosmy.site

@@ -18,10 +18,10 @@ add_filter('pre_set_site_transient_update_plugins', function($transient) {
     $plugin_file = plugin_basename(__DIR__ . '/index.php');
     $plugin_data = get_plugin_data(__DIR__ . '/index.php');
     $current_version = $plugin_data['Version'];
-    $plug_refresh_check = "https://raw.githubusercontent.com/TheSmileGod/Cosmy_seo/main/update/cosmy-plugin-update.json";
+    $plug_refresh_check = "https://raw.githubusercontent.com/TheSmileGod/Cosmy_seo/main/update/cosmy-plugin-update-test.json";
     $plug_url = 'https://github.com/TheSmileGod/Cosmy_seo';
     
-    $cache_key = 'cosmy_update_check';
+    $cache_key = 'cosmy_update_check_test';
     $cached = get_transient($cache_key);
     if ($cached !== false) {
         $remote = $cached;
