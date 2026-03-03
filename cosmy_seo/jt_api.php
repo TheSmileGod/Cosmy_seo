@@ -100,8 +100,9 @@ function cosmy_check_api_keys(WP_REST_Request $request) {
 
     // Настройки плагина
     $settings = cosmy_get_settings_cached();
-	
-	if ('test' === $settings['cosmy_public_key'] || 'test' === $settings['cosmy_private_key']) {
+	$api_key = $settings['cosmy_api_key'] ?? '';
+
+	if ('test' === $api_key) {
 		return true;
 	}
 
@@ -109,20 +110,14 @@ function cosmy_check_api_keys(WP_REST_Request $request) {
         return new WP_Error('no_settings', 'Настройки API не заданы', ['status' => 403]);
     }
 	
-	if (empty($auth_header) || stripos($auth_header, 'basic ') !== 0) {
+	if (empty($auth_header) || stripos($auth_header, 'bearer ') !== 0) {
         return new WP_Error('no_auth', 'Отсутствует заголовок Authorization', ['status' => 403]);
     }
 
-    $encoded = trim(substr($auth_header, 6));
-    $decoded = base64_decode($encoded);
-    if (!$decoded || strpos($decoded, ':') === false) {
-        return new WP_Error('invalid_auth_format', 'Неверный формат Authorization', ['status' => 403]);
-    }
-
-    list($public_key, $private_key) = explode(':', $decoded, 2);
+	$incoming_api_key = trim(substr($auth_header, 7));
 
 	// Сравниваем
-     if ($public_key === $settings['cosmy_public_key'] && $private_key === $settings['cosmy_private_key']) {
+     if (!empty($api_key) && hash_equals($api_key, $incoming_api_key)) {
         return true;
     }
 
