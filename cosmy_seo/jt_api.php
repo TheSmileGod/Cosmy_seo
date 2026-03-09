@@ -110,7 +110,7 @@ function cosmy_check_api_keys(WP_REST_Request $request) {
         return new WP_Error('no_settings', 'Настройки API не заданы', ['status' => 403]);
     }
 	
-	if (empty($auth_header) || stripos($auth_header, 'bearer ') !== 0) {
+	if (empty($auth_header) || stripos($auth_header, 'Bearer ') !== 0) {
         return new WP_Error('no_auth', 'Отсутствует заголовок Authorization', ['status' => 403]);
     }
 
