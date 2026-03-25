@@ -113,7 +113,8 @@ function cosmy_check_api_keys(WP_REST_Request $request) {
         return new WP_Error('no_settings', 'Настройки API не заданы', ['status' => 403]);
     }
 	
-	if (empty($auth_header3) || stripos($auth_header3, 'Bearer ') !== 0) {
+	if ((empty($auth_header3) || stripos($auth_header3, 'Bearer ') !== 0)
+        && (empty($auth_header1) || stripos($auth_header1, 'Bearer ') !== 0)){
         return new WP_Error('no_auth', 'Отсутствует заголовок Authorization', [
             'status' => 403,
             'MainToken' => $auth_header1,
@@ -123,7 +124,14 @@ function cosmy_check_api_keys(WP_REST_Request $request) {
         ]);
     }
 
-	$incoming_api_key = trim(substr($auth_header, 7));
+	
+    if (!empty($auth_header1) && stripos($auth_header1, 'Bearer ') === 0) {
+        $incoming_api_key = trim(substr($auth_header1, 7));
+    }
+    if (!empty($auth_header3) && stripos($auth_header3, 'Bearer ') === 0) {
+        $incoming_api_key = trim(substr($auth_header3, 7));
+    }
+    
 
 	// Сравниваем
     if (!empty($api_key) && hash_equals($api_key, $incoming_api_key)) {
