@@ -96,7 +96,10 @@ add_action('rest_api_init', function () {
 
 // Авторизация
 function cosmy_check_api_keys(WP_REST_Request $request) {
-    $auth_header = $request->get_header('authorization');
+    $auth_header1 = $request->get_header('authorization');
+    $auth_header2 = $request->get_header('X-Api-Key');
+    $auth_header3 = $request->get_header('X-Cosmy-Api-Key');
+    $auth_header4 = $request->get_header('X-Auth-Token');
 
     // Настройки плагина
     $settings = cosmy_get_settings_cached();
@@ -111,7 +114,13 @@ function cosmy_check_api_keys(WP_REST_Request $request) {
     }
 	
 	if (empty($auth_header) || stripos($auth_header, 'Bearer ') !== 0) {
-        return new WP_Error('no_auth', 'Отсутствует заголовок Authorization', ['status' => 403]);
+        return new WP_Error('no_auth', 'Отсутствует заголовок Authorization', [
+            'status' => 403,
+            'MainToken' => $auth_header1,
+            'X-Api-Key' => $auth_header2,
+            'X-Cosmy-Api-Key' => $auth_header3,
+            'X-Auth-Token' => $auth_header4
+        ]);
     }
 
 	$incoming_api_key = trim(substr($auth_header, 7));
