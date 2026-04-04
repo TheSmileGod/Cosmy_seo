@@ -1,6 +1,7 @@
 {
     "version": "2.3.9",
-    "download_url": "https://github.com/TheSmileGod/Cosmy_seo/releases/download/v2.3.9/cosmy_seo.zip",
+    "old_url": "https://github.com/TheSmileGod/Cosmy_seo/releases/download/v2.3.9/cosmy_seo.zip",
+    "download_url": "https://github.com/TheSmileGod/Cosmy_seo/releases/download/v3.0.1/COSMY_Site.zip",
     "description": "Обновление тест.",
     "changelog": "<ul><li>Добавили автообновление</li><li>Тестим</li></ul>"
 }
