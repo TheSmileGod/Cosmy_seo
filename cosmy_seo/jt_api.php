@@ -364,10 +364,17 @@ function cosmy_post_article(WP_REST_Request $request) {
         'post_status'  => 'publish',
     ]);
 
+    $image_url = '';
+
+    if (has_post_thumbnail($post_id)) {
+        $image_url = get_the_post_thumbnail_url($post_id, 'thumbnail');
+    }
+
     return [
         'success' => true,
         'post_id' => $post_id,
         'url'     => get_permalink($post_id),
+        'image_url' => $image_url,
     ];
 }
 
