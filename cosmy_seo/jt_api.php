@@ -367,7 +367,7 @@ function cosmy_post_article(WP_REST_Request $request) {
     $image_url = '';
 
     if (has_post_thumbnail($post_id)) {
-        $image_url = get_the_post_thumbnail_url($post_id, 'thumbnail');
+        $image_url = get_the_post_thumbnail_url($post_id, 'medium');
     }
 
     return [
