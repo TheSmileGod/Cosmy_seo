@@ -615,7 +615,7 @@ function cosmy_force_update_api(WP_REST_Request $request) {
     require_once(ABSPATH . 'wp-admin/includes/file.php');
     require_once(ABSPATH . 'wp-admin/includes/plugin.php');
     //test update and reactivated
-    $plugin_slug = 'COSMY_Site/index.php';
+    $plugin_slug = plugin_basename(__DIR__ . '/index.php');
     $was_active = is_plugin_active($plugin_slug);
 
     delete_site_transient('update_plugins');
@@ -637,7 +637,7 @@ function cosmy_force_update_api(WP_REST_Request $request) {
             return [
                 'success' => true,
                 'message' => 'Плагин успешно обновлен',
-                'version' => get_plugin_data(WP_PLUGIN_DIR . '/' . $plugin_slug)['Version']
+                'version' => get_plugin_data(__DIR__ . '/index.php')['Version']
             ];
         } else {
             return [
@@ -650,7 +650,7 @@ function cosmy_force_update_api(WP_REST_Request $request) {
         return [
             'success' => true,
             'message' => 'Обновление не требуется',
-            'current_version' => get_plugin_data(WP_PLUGIN_DIR . '/' . $plugin_slug)['Version']
+            'current_version' => get_plugin_data(__DIR__ . '/index.php')['Version']
         ];
     }
 }

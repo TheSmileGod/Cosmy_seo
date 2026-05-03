@@ -32,7 +32,7 @@ add_filter('pre_set_site_transient_update_plugins', function($transient) {
           set_transient($cache_key, $remote, 10 * MINUTE_IN_SECONDS);
         }
     }
-    $plugin = 'COSMY_Site/index.php';
+    $plugin = plugin_basename(__DIR__ . '/index.php');
 
     if ($remote && version_compare($current_version, $remote->version, '<')) {
         $res = new stdClass();
