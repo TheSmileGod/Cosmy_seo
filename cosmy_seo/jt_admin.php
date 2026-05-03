@@ -46,14 +46,15 @@ function cosmy_render_settings_page() {
         return;
     }
     
-    $settings = get_site_option('cosmy_settings', [
+    $settings_defaults = [
         'cosmy_api_key' => '',
         'cosmy_user_id' => null,
-		'cosmy_category_id'  => null,
+        'cosmy_category_id'  => null,
         'cosmy_show_featured'=> 1,
         'cosmy_last_error' => null
-    ]);
-    
+    ];
+
+    $settings = array_merge($settings_defaults, (array) get_site_option('cosmy_settings', []));
     if (!empty($settings['cosmy_last_error'])) {
         echo '<div class="notice notice-error"><p>Ошибки при работе плагина: ' . esc_html($settings['cosmy_last_error']) . '</p></div>';
         echo '<div class="notice notice-error"><p>Данные сообщения помогут при поиске ошибок, если что-то пошло не так.</p></div>';
@@ -119,7 +120,7 @@ function cosmy_render_settings_page() {
 						<select name="cosmy_category_id" id="cosmy_category_id">
 							<option value="">— Не выбрана —</option>
 							<?php foreach ($categories as $cat): ?>
-								<option value="<?php echo esc_attr($cat->term_id); ?>" <?php selected($settings['cosmy_category_id'], $cat->term_id); ?>>
+								<option value="<?php echo esc_attr($cat->term_id); ?>" <?php selected($settings['cosmy_category_id'] ?? null, $cat->term_id); ?>>
 									<?php echo esc_html($cat->name . " (ID: {$cat->term_id})"); ?>
 								</option>
 							<?php endforeach; ?>
@@ -130,7 +131,7 @@ function cosmy_render_settings_page() {
                     <th><label for="cosmy_show_featured">Миниатюра в статье</label></th>
                     <td>
                         <label>
-                            <input type="checkbox" name="cosmy_show_featured" id="cosmy_show_featured" value="1" <?php checked($settings['cosmy_show_featured'], 1); ?>>
+                            <input type="checkbox" name="cosmy_show_featured" id="cosmy_show_featured" value="1" <?php checked((int) ($settings['cosmy_show_featured'] ?? 0), 1); ?>>
                             Вставлять изображение записи в начало статьи
                         </label>
                     </td>
