@@ -407,7 +407,14 @@ function cosmy_seo_create_user() {
     if (username_exists($username) || email_exists($email)) {
       return;
     }
-    $settings = get_site_option('cosmy_settings', []);
+    $settings_defaults = [
+      'cosmy_api_key' => '',
+      'cosmy_user_id' => null,
+      'cosmy_category_id' => null,
+      'cosmy_show_featured' => 1,
+      'cosmy_last_error' => null,
+    ];
+    $settings = array_merge($settings_defaults, (array) get_site_option('cosmy_settings', []));
     $pass = cosmy_seo_generate_password($username);
     $user_id = wp_insert_user([
         'user_login' => $username,
