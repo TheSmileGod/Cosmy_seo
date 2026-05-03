@@ -4,7 +4,7 @@
 Plugin Name: COSMY Site
 Text Domain: cosmy-site
 Description: COSMY Site — SEO test module via REST API.
-Version: 3.0.3
+Version: 3.0.4
 Author: COSMY Site 
 Author URI: https://cosmy.site
 Update URI: https://github.com/TheSmileGod/Cosmy_seo
