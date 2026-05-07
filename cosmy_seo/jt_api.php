@@ -604,7 +604,14 @@ function cosmy_post_tags(WP_REST_Request $request) {
         update_term_meta($id, 'cosmy_tag_keywords', $keywords);
         update_term_meta($id, '_cosmy_seo_tag_tagger', current_time('mysql'));
     }
-    return ['success' => true, 'id' => $id];
+    $tag_url = get_tag_link($id);
+
+    return [
+        'success'   => true,
+        'id'        => $id,
+        'url'       => is_wp_error($tag_url) ? '' : $tag_url,
+        'image_url' => '',
+    ];
 }
 
 
