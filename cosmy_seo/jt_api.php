@@ -605,11 +605,13 @@ function cosmy_post_tags(WP_REST_Request $request) {
         update_term_meta($id, '_cosmy_seo_tag_tagger', current_time('mysql'));
     }
     $tag_url = get_tag_link($id);
+    $tag_link = is_wp_error($tag_url) ? '' : $tag_url;
 
     return [
         'success'   => true,
         'id'        => $id,
-        'url'       => is_wp_error($tag_url) ? '' : $tag_url,
+        'url'       => $tag_link,
+        'link'      => $tag_link,
         'image_url' => '',
     ];
 }
@@ -744,9 +746,17 @@ function cosmy_tags_to_link(WP_REST_Request $request) {
             }
         }
 
+        $tag_link = '';
+        if ($target_term) {
+            $term_link = get_term_link($target_term, $taxonomy);
+            $tag_link = is_wp_error($term_link) ? '' : $term_link;
+        }
+
         $results[] = [
             'name' => $tag_name,
             'term_id' => $target_term ? $target_term->term_id : null,
+            'link' => $tag_link,
+            'url' => $tag_link,
         ];
     }
 
