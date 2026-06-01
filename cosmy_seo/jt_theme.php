@@ -15,12 +15,14 @@ add_filter('pre_set_site_transient_update_plugins', function($transient) {
     if (empty($transient->checked)) {
         return $transient;
     }
-    $plugin_file = plugin_basename(__DIR__ . '/index.php');
+
+    $plugin = plugin_basename(__DIR__ . '/index.php');
     $plugin_data = get_plugin_data(__DIR__ . '/index.php');
     $current_version = $plugin_data['Version'];
     $plug_refresh_check = "https://raw.githubusercontent.com/TheSmileGod/Cosmy_seo/main/update/cosmy-plugin-update-test.json";
     $plug_url = 'https://github.com/TheSmileGod/Cosmy_seo';
-    
+    $remote = null;
+
     $cache_key = 'cosmy_update_check_test';
     $cached = get_transient($cache_key);
     if ($cached !== false) {
@@ -32,17 +34,34 @@ add_filter('pre_set_site_transient_update_plugins', function($transient) {
           set_transient($cache_key, $remote, 10 * MINUTE_IN_SECONDS);
         }
     }
-    $plugin = plugin_basename(__DIR__ . '/index.php');
 
-    if ($remote && version_compare($current_version, $remote->version, '<')) {
-        $res = new stdClass();
-        $res->slug = 'cosmy-site';
-        $res->plugin = $plugin;
+    $res = new stdClass();
+    $res->id = $plugin;
+    $res->slug = 'cosmy-site';
+    $res->plugin = $plugin;
+    $res->new_version = $current_version;
+    $res->package = '';
+    $res->url = $plug_url;
+    $res->icons = [];
+    $res->banners = [];
+    $res->banners_rtl = [];
+    $res->tested = '';
+    $res->requires_php = '';
+    $res->compatibility = new stdClass();
+
+    if ($remote && !empty($remote->version)) {
         $res->new_version = $remote->version;
-        $res->package = $remote->download_url;
-        $res->url = $plug_url;
-        $transient->response[$plugin] = $res;
+        $res->package = !empty($remote->download_url) ? $remote->download_url : '';
     }
+
+    if (version_compare($current_version, $res->new_version, '<')) {
+        $transient->response[$plugin] = $res;
+        unset($transient->no_update[$plugin]);
+    } else {
+        $transient->no_update[$plugin] = $res;
+        unset($transient->response[$plugin]);
+    }
+
     return $transient;
 });
 
