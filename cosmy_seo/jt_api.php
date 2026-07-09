@@ -59,6 +59,14 @@ add_action('rest_api_init', function () {
             return cosmy_check_api_keys($request);
         }
     ]);
+    //images
+    register_rest_route('cosmy/v1', '/images', [
+        'methods' => 'GET',
+        'callback' => 'cosmy_get_images',
+        'permission_callback' => function($request) {
+            return cosmy_check_api_keys($request);
+        }
+    ]);
     //image upload
     register_rest_route('cosmy/v1', '/upload', [
         'methods' => 'POST',
@@ -376,6 +384,32 @@ function cosmy_post_article(WP_REST_Request $request) {
         'url'     => get_permalink($post_id),
         'image_url' => $image_url,
     ];
+}
+
+//GET /images
+function cosmy_get_images(WP_REST_Request $request) {
+    $limit = intval($request->get_param('limit') ?? 100);
+
+    $query = new WP_Query([
+        'post_type'      => 'attachment',
+        'post_status'    => 'inherit',
+        'post_mime_type' => 'image',
+        'posts_per_page' => $limit,
+        'orderby'        => 'date',
+        'order'          => 'DESC',
+        'no_found_rows'  => true,
+    ]);
+
+    $images = [];
+
+    foreach ($query->posts as $attachment) {
+        $images[] = [
+            'title'     => $attachment->post_title,
+            'url_image' => wp_get_attachment_image_url($attachment->ID, 'full'),
+        ];
+    }
+
+    return $images;
 }
 
 //POST /upload
