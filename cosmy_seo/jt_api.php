@@ -67,6 +67,13 @@ add_action('rest_api_init', function () {
             return cosmy_check_api_keys($request);
         }
     ]);
+    register_rest_route('cosmy/v1', '/images', [
+        'methods' => 'POST',
+        'callback' => 'cosmy_post_image',
+        'permission_callback' => function($request) {
+            return cosmy_check_api_keys($request);
+        }
+    ]);
     //image upload
     register_rest_route('cosmy/v1', '/upload', [
         'methods' => 'POST',
@@ -388,13 +395,15 @@ function cosmy_post_article(WP_REST_Request $request) {
 
 //GET /images
 function cosmy_get_images(WP_REST_Request $request) {
-    $limit = intval($request->get_param('limit') ?? 100);
+    $limit = max(1, intval($request->get_param('limit') ?? 100));
+    $offset = max(0, intval($request->get_param('offset') ?? 0));
 
     $query = new WP_Query([
         'post_type'      => 'attachment',
         'post_status'    => 'inherit',
         'post_mime_type' => 'image',
         'posts_per_page' => $limit,
+        'offset'         => $offset,
         'orderby'        => 'date',
         'order'          => 'DESC',
         'no_found_rows'  => true,
@@ -404,12 +413,54 @@ function cosmy_get_images(WP_REST_Request $request) {
 
     foreach ($query->posts as $attachment) {
         $images[] = [
-            'title'     => $attachment->post_title,
-            'url_image' => wp_get_attachment_image_url($attachment->ID, 'full'),
+            'id'          => $attachment->ID,
+            'date'        => $attachment->post_date,
+            'url_image'   => wp_get_attachment_image_url($attachment->ID, 'full'),
+            'title'       => $attachment->post_title,
+            'description' => $attachment->post_content,
         ];
     }
 
     return $images;
+}
+
+//POST /images
+function cosmy_post_image(WP_REST_Request $request) {
+    $params = $request->get_json_params();
+    if (!is_array($params)) {
+        $params = $request->get_params();
+    }
+
+    $id = intval($params['id'] ?? 0);
+    $description = sanitize_text_field($params['description'] ?? '');
+
+    if ($id <= 0) {
+        return new WP_Error('invalid_image_id', 'Некорректный id картинки', ['status' => 400]);
+    }
+
+    if (empty($description)) {
+        return ['success' => false, 'id' => $id, 'msg' => 'empty data'];
+    }
+
+    $attachment = get_post($id);
+    if (!$attachment || $attachment->post_type !== 'attachment' || strpos($attachment->post_mime_type, 'image/') !== 0) {
+        return new WP_Error('image_not_found', 'Картинка не найдена', ['status' => 404]);
+    }
+
+    $result = wp_update_post([
+        'ID'           => $id,
+        'post_content' => $description,
+    ], true);
+
+    if (is_wp_error($result)) {
+        return $result;
+    }
+
+    return [
+        'success'     => true,
+        'id'          => $id,
+        'description' => $description,
+    ];
 }
 
 //POST /upload
