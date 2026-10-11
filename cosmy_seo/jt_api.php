@@ -162,6 +162,7 @@ function cosmy_site_info(WP_REST_Request $request) {
     $cached = get_transient($cache_key);
 
     if ($cached !== false) {
+        $cached['capabilities']['safe_test'] = true;
         return $cached; // 🔥 Берём из кэша, не трогаем базу
     }
 
@@ -169,6 +170,7 @@ function cosmy_site_info(WP_REST_Request $request) {
         'name'        => get_bloginfo('name'),
         'description' => get_bloginfo('description'),
         'url'         => home_url(),
+        'capabilities' => ['safe_test' => true],
     ];
 
     $categories = get_terms([
@@ -297,6 +299,7 @@ function cosmy_get_article(WP_REST_Request $request) {
 //POST /article
 function cosmy_post_article(WP_REST_Request $request) {
     $params = $request->get_json_params();
+	$test = filter_var($params['test'] ?? false, FILTER_VALIDATE_BOOLEAN);
 	
 	$id = intval($params['id'] ?? 0); 
     $title = sanitize_text_field($params['title'] ?? '');
@@ -305,6 +308,29 @@ function cosmy_post_article(WP_REST_Request $request) {
     $tags = $params['tags'] ?? [];
     $attachment_id = intval($params['attachment'] ?? 0);
 	$status = sanitize_text_field($params['status'] ?? 'draft');
+
+    if ($test && $id > 0) {
+        return new WP_Error('test_update_forbidden', 'Тест допускает только новую статью', ['status' => 400]);
+    }
+
+    if ($test) {
+        $image = get_post($attachment_id);
+        if (!$image || $image->post_type !== 'attachment' || strpos($image->post_mime_type, 'image/') !== 0) {
+            return new WP_Error('test_image_not_found', 'Тестовая картинка не найдена', ['status' => 400]);
+        }
+        $used_as_thumbnail = get_posts([
+            'post_type' => 'any',
+            'post_status' => 'any',
+            'meta_key' => '_thumbnail_id',
+            'meta_value' => $attachment_id,
+            'fields' => 'ids',
+            'posts_per_page' => 1,
+        ]);
+        if ($image->post_parent || $used_as_thumbnail) {
+            return new WP_Error('test_image_in_use', 'Картинка уже используется', ['status' => 409]);
+        }
+        $status = 'draft';
+    }
 
 
     $settings = cosmy_get_settings_cached();
@@ -316,6 +342,11 @@ function cosmy_post_article(WP_REST_Request $request) {
     }
 
     if (!$title && !$id) {
+        if ($test) {
+            $error = new WP_Error('missing_title', 'Заголовок обязателен', ['status' => 400]);
+            $cleanup = cosmy_delete_test_attachment($attachment_id);
+            return is_wp_error($cleanup) ? cosmy_test_cleanup_context($error, $cleanup) : $error;
+        }
         return new WP_Error('missing_title', 'Заголовок обязателен', ['status' => 400]);
     }
 	$flag = '';
@@ -339,7 +370,6 @@ function cosmy_post_article(WP_REST_Request $request) {
             $flag = '_tagger';
 		}
         $post_id = wp_update_post($post_data, true);
-        update_post_meta($post_id, '_cosmy_seo_post' . $flag, $timeFlag);
         $action = 'updated';
     } else {
 		if (!function_exists('parse_blocks')) {
@@ -362,12 +392,41 @@ function cosmy_post_article(WP_REST_Request $request) {
 			'post_category' => [$default_category_id],
     	];
         $post_id = wp_insert_post($post_data, true);
-        update_post_meta($post_id, '_cosmy_seo_post' . $flag, $timeFlag);
         $action = 'created';
     }
 
     if (is_wp_error($post_id)) {
+        if ($test) {
+            $cleanup = cosmy_delete_test_attachment($attachment_id);
+            if (is_wp_error($cleanup)) {
+                return cosmy_test_cleanup_context($post_id, $cleanup);
+            }
+        }
         return $post_id;
+    }
+
+    update_post_meta($post_id, '_cosmy_seo_post' . $flag, $timeFlag);
+
+    if ($test) {
+        $result = true;
+        if (!set_post_thumbnail($post_id, $attachment_id) || (int) get_post_thumbnail_id($post_id) !== $attachment_id) {
+            $result = new WP_Error('test_thumbnail_failed', 'Не удалось прикрепить тестовую картинку', ['status' => 500]);
+        }
+
+        $deleted_post = wp_delete_post($post_id, true);
+        $cleanup = cosmy_delete_test_attachment($attachment_id);
+        if (!$deleted_post || get_post($post_id)) {
+            $cleanup_error = new WP_Error('test_post_cleanup_failed', 'Не удалось удалить тестовую статью', ['status' => 500]);
+            if (is_wp_error($cleanup)) {
+                $cleanup_error = cosmy_test_cleanup_context($cleanup_error, $cleanup);
+            }
+            return is_wp_error($result) ? cosmy_test_cleanup_context($result, $cleanup_error) : $cleanup_error;
+        }
+
+        if (is_wp_error($cleanup)) {
+            return is_wp_error($result) ? cosmy_test_cleanup_context($result, $cleanup) : $cleanup;
+        }
+        return is_wp_error($result) ? $result : ['success' => true, 'test' => true];
     }
 
     if ($attachment_id > 0) {
@@ -470,6 +529,7 @@ function cosmy_upload_image(WP_REST_Request $request) {
     }
 
     $file = $_FILES['file'];
+    $test = filter_var($request->get_param('test') ?? false, FILTER_VALIDATE_BOOLEAN);
 
     require_once(ABSPATH . 'wp-admin/includes/file.php');
     require_once(ABSPATH . 'wp-admin/includes/media.php');
@@ -499,17 +559,82 @@ function cosmy_upload_image(WP_REST_Request $request) {
             'post_content'   => $description,
             'post_status'    => 'inherit',
         ];
-        $attach_id = wp_insert_attachment($attachment, $filename);
-        if (!is_wp_error($attach_id)) {
+        $attach_id = wp_insert_attachment($attachment, $filename, 0, true);
+        if (!is_wp_error($attach_id) && $attach_id > 0) {
             $attach_data = wp_generate_attachment_metadata($attach_id, $filename);
+            if (is_wp_error($attach_data)) {
+                $cleanup = cosmy_delete_test_attachment($attach_id);
+                return is_wp_error($cleanup) ? cosmy_test_cleanup_context($attach_data, $cleanup) : $attach_data;
+            }
             wp_update_attachment_metadata($attach_id, $attach_data);
 		   	if (!empty($alt)) {
                 update_post_meta($attach_id, '_wp_attachment_image_alt', $alt);
             }
+            if ($test) {
+                $result = true;
+                if (!file_exists($filename) || !is_array($attach_data) || empty($attach_data['width']) || empty($attach_data['height']) || !get_post($attach_id) || !wp_get_attachment_metadata($attach_id)) {
+                    $result = new WP_Error('test_upload_verification_failed', 'Не удалось проверить тестовую загрузку', ['status' => 500]);
+                }
+                $cleanup = cosmy_delete_test_attachment($attach_id);
+                if (is_wp_error($cleanup)) {
+                    return is_wp_error($result) ? cosmy_test_cleanup_context($result, $cleanup) : $cleanup;
+                }
+                return is_wp_error($result) ? $result : ['success' => true, 'test' => true];
+            }
             return ['attachment_id' => $attach_id];
+        }
+        wp_delete_file($filename);
+        clearstatcache();
+        if (is_wp_error($attach_id)) {
+            if (file_exists($filename)) {
+                return cosmy_test_cleanup_context($attach_id, new WP_Error('test_image_cleanup_failed', 'Файл картинки не удалён', ['status' => 500]));
+            }
+            return $attach_id;
+        }
+        if (file_exists($filename)) {
+            return new WP_Error('test_image_cleanup_failed', 'Файл картинки не удалён', ['status' => 500]);
         }
         return new WP_Error('attachment_error', 'Ошибка добавления вложения', ['status' => 500]);
     }
+}
+
+function cosmy_delete_test_attachment($attachment_id) {
+    $file = get_attached_file($attachment_id);
+    $metadata = wp_get_attachment_metadata($attachment_id);
+    $files = $file ? [$file] : [];
+    if ($file && is_array($metadata)) {
+        foreach ($metadata['sizes'] ?? [] as $size) {
+            if (!empty($size['file'])) {
+                $files[] = dirname($file) . '/' . $size['file'];
+            }
+        }
+        if (!empty($metadata['original_image'])) {
+            $files[] = dirname($file) . '/' . $metadata['original_image'];
+        }
+    }
+
+    $deleted = wp_delete_attachment($attachment_id, true);
+    clearstatcache();
+    foreach ($files as $path) {
+        if (file_exists($path)) {
+            return new WP_Error('test_image_cleanup_failed', 'Файл тестовой картинки не удалён', ['status' => 500]);
+        }
+    }
+    if (!$deleted || get_post($attachment_id)) {
+        return new WP_Error('test_image_cleanup_failed', 'Тестовая картинка не удалена', ['status' => 500]);
+    }
+    return true;
+}
+
+function cosmy_test_cleanup_context(WP_Error $error, WP_Error $cleanup) {
+    $data = $error->get_error_data();
+    $data = is_array($data) ? $data : ['original_data' => $data];
+    $data['cleanup_error'] = [
+        'code' => $cleanup->get_error_code(),
+        'message' => $cleanup->get_error_message(),
+        'data' => $cleanup->get_error_data(),
+    ];
+    return new WP_Error($error->get_error_code(), $error->get_error_message(), $data);
 }
 //GET /tags
 function cosmy_get_tags(WP_REST_Request $request) {
