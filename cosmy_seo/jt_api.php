@@ -836,49 +836,104 @@ function cosmy_post_tags(WP_REST_Request $request) {
 
 
 //POST /force-update
-function cosmy_force_update_api(WP_REST_Request $request) {
-    // Включаем необходимые файлы WordPress
-    require_once(ABSPATH . 'wp-admin/includes/class-wp-upgrader.php');
-    require_once(ABSPATH . 'wp-admin/includes/file.php');
-    require_once(ABSPATH . 'wp-admin/includes/plugin.php');
-    //test update and reactivated
-    $plugin_slug = plugin_basename(__DIR__ . '/index.php');
-    $was_active = is_plugin_active($plugin_slug);
+function cosmy_update_failure($stage, $error, $messages = []) {
+    $labels = [
+        'prepare' => 'Не удалось подготовить обновление',
+        'manifest' => 'Не удалось проверить обновление',
+        'upgrade' => 'Ошибка при обновлении',
+        'activation' => 'Обновление установлено, но плагин не активирован'
+    ];
+    $details = $error;
+    if (is_wp_error($error)) {
+        $details = [
+            'codes' => $error->get_error_codes(),
+            'messages' => array_map('wp_strip_all_tags', $error->get_error_messages())
+        ];
+    } elseif ($error instanceof Throwable) {
+        $details = [
+            'code' => get_class($error),
+            'message' => wp_strip_all_tags($error->getMessage())
+        ];
+    }
+    $messages = array_map('wp_strip_all_tags', $messages);
+    $message = $labels[$stage];
+    if (($error === null || $error === false) && empty($messages)) {
+        $message .= ': WordPress не сообщил конкретную причину';
+    }
+    return [
+        'success' => false,
+        'message' => $message,
+        'error' => $details,
+        'diagnostics' => [
+            'stage' => $stage,
+            'result_type' => gettype($error),
+            'messages' => $messages
+        ]
+    ];
+}
 
-    delete_site_transient('update_plugins');
-    set_site_transient('update_plugins', null);
-    wp_clean_plugins_cache(true);
-    wp_update_plugins();
-    
-    $updates = get_site_transient('update_plugins');
-    
-    if (isset($updates->response[$plugin_slug])) {
-        $upgrader = new Plugin_Upgrader(new Automatic_Upgrader_Skin());
-        
-        $result = $upgrader->upgrade($plugin_slug);
-        
-        if ($result === true && $was_active && !is_plugin_active($plugin_slug)) {
-            activate_plugin($plugin_slug);
+function cosmy_force_update_api(WP_REST_Request $request) {
+    $stage = 'prepare';
+    $skin = null;
+    try {
+        require_once(ABSPATH . 'wp-admin/includes/class-wp-upgrader.php');
+        require_once(ABSPATH . 'wp-admin/includes/file.php');
+        require_once(ABSPATH . 'wp-admin/includes/plugin.php');
+        $plugin_slug = plugin_basename(__DIR__ . '/index.php');
+        $was_active = is_plugin_active($plugin_slug);
+
+        delete_site_transient('update_plugins');
+        set_site_transient('update_plugins', null);
+        wp_clean_plugins_cache(true);
+        $stage = 'manifest';
+        $remote = cosmy_get_update_manifest();
+        if (is_wp_error($remote)) {
+            return cosmy_update_failure($stage, $remote);
         }
-        if ($result === true) {
+        wp_update_plugins();
+        $current_version = get_plugin_data(__DIR__ . '/index.php')['Version'];
+        if (!version_compare($current_version, $remote->version, '<')) {
             return [
                 'success' => true,
-                'message' => 'Плагин успешно обновлен',
-                'version' => get_plugin_data(__DIR__ . '/index.php')['Version']
-            ];
-        } else {
-            return [
-                'success' => false,
-                'message' => 'Ошибка при обновлении',
-                'error' => $result
+                'message' => 'Обновление не требуется',
+                'current_version' => $current_version
             ];
         }
-    } else {
+        if (empty($remote->download_url)) {
+            return cosmy_update_failure($stage, new WP_Error('cosmy_package_missing', 'В манифесте отсутствует URL архива обновления'));
+        }
+        $updates = get_site_transient('update_plugins');
+        if (!isset($updates->response[$plugin_slug])) {
+            return cosmy_update_failure($stage, new WP_Error('cosmy_update_offer_missing', 'Доступна новая версия, но WordPress не подготовил обновление плагина'));
+        }
+
+        $stage = 'upgrade';
+        $skin = new Automatic_Upgrader_Skin();
+        $upgrader = new Plugin_Upgrader($skin);
+        $result = $upgrader->upgrade($plugin_slug);
+        if ($result !== true) {
+            return cosmy_update_failure($stage, $result, $skin->get_upgrade_messages());
+        }
+        $stage = 'activation';
+        if ($was_active && !is_plugin_active($plugin_slug)) {
+            $activation = activate_plugin($plugin_slug);
+            if (is_wp_error($activation) || !is_plugin_active($plugin_slug)) {
+                $failure = cosmy_update_failure($stage, is_wp_error($activation) ? $activation : new WP_Error('cosmy_reactivation_failed', 'После обновления плагин остался неактивным'), $skin->get_upgrade_messages());
+                $failure['updated'] = true;
+                return $failure;
+            }
+        }
         return [
             'success' => true,
-            'message' => 'Обновление не требуется',
-            'current_version' => get_plugin_data(__DIR__ . '/index.php')['Version']
+            'message' => 'Плагин успешно обновлен',
+            'version' => get_plugin_data(__DIR__ . '/index.php')['Version']
         ];
+    } catch (Throwable $error) {
+        $failure = cosmy_update_failure($stage, $error, $skin ? $skin->get_upgrade_messages() : []);
+        if ($stage === 'activation') {
+            $failure['updated'] = true;
+        }
+        return $failure;
     }
 }
 //POST /taglist

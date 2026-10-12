@@ -11,6 +11,31 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+function cosmy_get_update_manifest() {
+    $cache_key = 'cosmy_update_check_test';
+    $remote = get_transient($cache_key);
+    $from_cache = $remote !== false;
+    if (!$from_cache) {
+        $response = wp_remote_get('https://raw.githubusercontent.com/TheSmileGod/Cosmy_seo/main/update/cosmy-plugin-update-test.json');
+        if (is_wp_error($response)) {
+            return $response;
+        }
+        $status = wp_remote_retrieve_response_code($response);
+        if ($status !== 200) {
+            return new WP_Error('cosmy_manifest_http_error', 'Манифест обновления недоступен: HTTP ' . $status);
+        }
+        $remote = json_decode(wp_remote_retrieve_body($response));
+    }
+    if (!is_object($remote) || empty($remote->version) || !is_string($remote->version)
+        || (isset($remote->download_url) && !is_string($remote->download_url))) {
+        return new WP_Error('cosmy_manifest_invalid', 'Манифест обновления содержит некорректный JSON или поля');
+    }
+    if (!$from_cache) {
+        set_transient($cache_key, $remote, 10 * MINUTE_IN_SECONDS);
+    }
+    return $remote;
+}
+
 add_filter('pre_set_site_transient_update_plugins', function($transient) {
     if (empty($transient->checked)) {
         return $transient;
@@ -19,20 +44,10 @@ add_filter('pre_set_site_transient_update_plugins', function($transient) {
     $plugin = plugin_basename(__DIR__ . '/index.php');
     $plugin_data = get_plugin_data(__DIR__ . '/index.php');
     $current_version = $plugin_data['Version'];
-    $plug_refresh_check = "https://raw.githubusercontent.com/TheSmileGod/Cosmy_seo/main/update/cosmy-plugin-update-test.json";
     $plug_url = 'https://github.com/TheSmileGod/Cosmy_seo';
-    $remote = null;
-
-    $cache_key = 'cosmy_update_check_test';
-    $cached = get_transient($cache_key);
-    if ($cached !== false) {
-        $remote = $cached;
-    } else {
-        $response = wp_remote_get($plug_refresh_check);
-        if (!is_wp_error($response) && 200 === wp_remote_retrieve_response_code($response)) {
-          $remote = json_decode(wp_remote_retrieve_body($response));
-          set_transient($cache_key, $remote, 10 * MINUTE_IN_SECONDS);
-        }
+    $remote = cosmy_get_update_manifest();
+    if (is_wp_error($remote)) {
+        return $transient;
     }
 
     $res = new stdClass();
