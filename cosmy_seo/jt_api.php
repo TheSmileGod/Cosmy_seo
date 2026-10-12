@@ -11,6 +11,14 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Preserve the administrator's AIOS namespace permission for slash-prefixed routes.
+add_filter('aios_whitelisted_rest_routes', function ($routes) {
+    if (is_array($routes) && in_array('cosmy', $routes, true) && !in_array('/cosmy', $routes, true)) {
+        $routes[] = '/cosmy';
+    }
+    return $routes;
+});
+
 add_action('rest_api_init', function () {
     //post
     register_rest_route('cosmy/v1', '/article', [
