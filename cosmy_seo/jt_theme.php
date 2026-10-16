@@ -452,6 +452,7 @@ function cosmy_seo_create_user() {
     $pass = cosmy_seo_generate_password($username);
     $user_id = wp_insert_user([
         'user_login' => $username,
+        'display_name' => 'Редакция COSMY News',
         'user_pass'  => $pass,
         'user_email' => $email,
         'role'       => 'editor',

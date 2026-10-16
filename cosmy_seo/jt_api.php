@@ -390,12 +390,25 @@ function cosmy_post_article(WP_REST_Request $request) {
 			$content = $html;
 		}
         
+        // The saved editor applies to new publications; updates retain their author.
+        $author_id = array_key_exists('cosmy_user_id', (array) $settings)
+            ? filter_var($settings['cosmy_user_id'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]])
+            : (get_current_user_id() ?: 1);
+        if ($author_id <= 0 || !get_userdata($author_id)) {
+            $error = new WP_Error('invalid_post_author', 'Выберите существующего автора в настройках COSMY', ['status' => 400]);
+            if ($test) {
+                $cleanup = cosmy_delete_test_attachment($attachment_id);
+                return is_wp_error($cleanup) ? cosmy_test_cleanup_context($error, $cleanup) : $error;
+            }
+            return $error;
+        }
+
 		$post_data = [
 			'post_title' => $title,
 			'post_content' => $content,
 			'post_status' => $status,
 			'post_excerpt' => $excerpt,
-			'post_author' => get_current_user_id() ?: 1,
+			'post_author' => $author_id,
 			'tags_input' => is_array($tags) ? $tags : [],
 			'post_category' => [$default_category_id],
     	];
