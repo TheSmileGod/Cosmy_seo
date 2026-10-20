@@ -166,11 +166,14 @@ function cosmy_check_api_keys(WP_REST_Request $request) {
 // Функционал
 //GET /info
 function cosmy_site_info(WP_REST_Request $request) {
+    $plugin_data = get_file_data(__DIR__ . '/index.php', ['Version' => 'Version'], 'plugin');
+    $plugin_version = $plugin_data['Version'];
     $cache_key = 'cosmy_site_info_cache';
     $cached = get_transient($cache_key);
 
     if ($cached !== false) {
         $cached['capabilities']['safe_test'] = true;
+        $cached['plugin_version'] = $plugin_version;
         return $cached; // 🔥 Берём из кэша, не трогаем базу
     }
 
@@ -178,6 +181,7 @@ function cosmy_site_info(WP_REST_Request $request) {
         'name'        => get_bloginfo('name'),
         'description' => get_bloginfo('description'),
         'url'         => home_url(),
+        'plugin_version' => $plugin_version,
         'capabilities' => ['safe_test' => true],
     ];
 
