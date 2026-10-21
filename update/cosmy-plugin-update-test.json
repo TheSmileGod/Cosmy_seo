@@ -1,6 +1,6 @@
 {
-    "version": "3.1.0",
-    "download_url": "https://github.com/TheSmileGod/Cosmy_seo/releases/download/v3.1.0/COSMY_Site.zip",
+    "version": "3.1.1",
+    "download_url": "https://github.com/TheSmileGod/Cosmy_seo/releases/download/v3.1.1/COSMY_Site.zip",
     "description": "Тестовый канал обновлений для EX-сайтов.",
-    "changelog": "<ul><li>Отдельный update-манифест для тестов</li></ul>"
+    "changelog": "<ul><li>Передача версии установленного плагина в ответе /info.</li></ul>"
 }
