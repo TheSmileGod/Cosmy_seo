@@ -1,7 +1,7 @@
 {
-    "version": "3.1.1",
+    "version": "3.1.2",
     "old_url": "https://github.com/TheSmileGod/Cosmy_seo/releases/download/v2.3.9/cosmy_seo.zip",
-    "download_url": "https://github.com/TheSmileGod/Cosmy_seo/releases/download/v3.1.1/COSMY_Site.zip",
+    "download_url": "https://github.com/TheSmileGod/Cosmy_seo/releases/download/v3.1.2/COSMY_Site.zip",
     "description": "Обновление тест.",
-    "changelog": "<ul><li>Передача версии установленного плагина в ответе /info.</li></ul>"
+    "changelog": "<ul><li>Получение конкретного тега по имени: GET /tags?name=.</li></ul>"
 }

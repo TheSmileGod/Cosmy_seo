@@ -661,11 +661,66 @@ function cosmy_test_cleanup_context(WP_Error $error, WP_Error $cleanup) {
     ];
     return new WP_Error($error->get_error_code(), $error->get_error_message(), $data);
 }
+function cosmy_format_tag($tag) {
+    return [
+        'id'          => $tag->term_id,
+        'name'        => $tag->name,
+        'slug'        => $tag->slug,
+        'count'       => $tag->count,
+        'link'        => get_tag_link($tag->term_id),
+        'description' => $tag->description,
+        'meta'        => [
+            'cosmy_tag_excerpt'  => get_term_meta($tag->term_id, 'cosmy_tag_excerpt', true),
+            'cosmy_tag_keywords' => get_term_meta($tag->term_id, 'cosmy_tag_keywords', true),
+        ],
+        'flag' => [
+            'create'  => get_term_meta($tag->term_id, '_cosmy_seo_tag', true),
+            'tagger'  => get_term_meta($tag->term_id, '_cosmy_seo_tag_tagger', true),
+            'excerpt' => get_term_meta($tag->term_id, '_cosmy_seo_tag_excerpt', true),
+        ],
+    ];
+}
+
+// Один тег по точному имени (без учёта регистра); null, если не найден.
+function cosmy_find_tag_by_name($name) {
+    $term = get_term_by('name', $name, 'post_tag');
+    if ($term && !is_wp_error($term)) {
+        return $term;
+    }
+    $candidates = get_terms([
+        'taxonomy'   => 'post_tag',
+        'hide_empty' => false,
+        'name__like' => $name,
+    ]);
+    if (is_wp_error($candidates)) {
+        return null;
+    }
+    $needle = mb_strtolower(trim($name));
+    foreach ($candidates as $candidate) {
+        if (mb_strtolower(trim($candidate->name)) === $needle) {
+            return $candidate;
+        }
+    }
+    return null;
+}
+
 //GET /tags
 function cosmy_get_tags(WP_REST_Request $request) {
     $page    = max((int) $request->get_param('page'), 1);
     $limit   = $request->has_param('page') ? 100 : (int)$request->get_param('limit', 10);
     $settings = get_site_option('cosmy_tags');
+
+    // 🔹 Конкретный тег по имени: только он, без добора популярных
+    $name = trim((string) $request->get_param('name'));
+    if ($name !== '') {
+        $tag = cosmy_find_tag_by_name($name);
+        return [
+            'page'  => 1,
+            'limit' => 1,
+            'total' => $tag ? 1 : 0,
+            'tags'  => $tag ? [cosmy_format_tag($tag)] : [],
+        ];
+    }
 
     $cat_ids = $request->get_param('cats');
     if (!empty($cat_ids) && !is_array($cat_ids)) {
@@ -757,26 +812,7 @@ function cosmy_get_tags(WP_REST_Request $request) {
     }
 
     // 🔹 3. Формируем ответ
-    $result = [];
-    foreach ($selected_tags as $tag) {
-        $result[] = [
-            'id'          => $tag->term_id,
-            'name'        => $tag->name,
-            'slug'        => $tag->slug,
-            'count'       => $tag->count,
-            'link'        => get_tag_link($tag->term_id),
-            'description' => $tag->description,
-            'meta'        => [
-                'cosmy_tag_excerpt'  => get_term_meta($tag->term_id, 'cosmy_tag_excerpt', true),
-                'cosmy_tag_keywords' => get_term_meta($tag->term_id, 'cosmy_tag_keywords', true),
-            ],
-            'flag' => [
-                'create'  => get_term_meta($tag->term_id, '_cosmy_seo_tag', true),
-                'tagger'  => get_term_meta($tag->term_id, '_cosmy_seo_tag_tagger', true),
-                'excerpt' => get_term_meta($tag->term_id, '_cosmy_seo_tag_excerpt', true),
-            ],
-        ];
-    }
+    $result = array_values(array_map('cosmy_format_tag', $selected_tags));
 
     // 🔹 4. Общее количество тегов
     $total = wp_count_terms('post_tag', ['hide_empty' => false]);
